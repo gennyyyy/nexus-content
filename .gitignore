@@ -1,0 +1,17 @@
+# Python dependencies
+backend/venv/
+backend/__pycache__/
+backend/*.py[cod]
+backend/*.so
+backend/database.db
+
+# Node dependencies
+nexus-context/node_modules/
+nexus-context/dist/
+nexus-context/.env
+
+# IDE / System
+.vscode/
+.idea/
+.DS_Store
+*.log

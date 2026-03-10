@@ -3,6 +3,7 @@ from mcp.server.fastmcp import FastMCP
 from sqlmodel import Session, select
 from database import engine
 from models import Task, TaskDependency, ContextEntry, TaskStatus
+from workspace import build_operational_states, build_resume_packet
 
 # Create an MCP Server instance
 mcp = FastMCP("nexus-context")
@@ -64,12 +65,75 @@ async def get_task_graph() -> str:
     with Session(engine) as session:
         tasks = session.exec(select(Task)).all()
         deps = session.exec(select(TaskDependency)).all()
+        states = {state.task_id: state for state in build_operational_states(tasks, deps)}
         
         result = {
-            "tasks": [{"id": t.id, "title": t.title, "status": t.status} for t in tasks],
-            "dependencies": [{"source": d.source_task_id, "target": d.target_task_id, "type": d.type} for d in deps]
+            "tasks": [
+                {
+                    "id": t.id,
+                    "title": t.title,
+                    "status": t.status,
+                    "is_ready": states.get(t.id or -1).is_ready if t.id is not None and states.get(t.id or -1) else False,
+                    "is_blocked": states.get(t.id or -1).is_blocked if t.id is not None and states.get(t.id or -1) else False,
+                }
+                for t in tasks
+            ],
+            "dependencies": [
+                {
+                    "source": d.source_task_id,
+                    "target": d.target_task_id,
+                    "type": d.type,
+                    "source_handle": d.source_handle,
+                    "target_handle": d.target_handle,
+                }
+                for d in deps
+            ]
         }
         return json.dumps(result)
+
+
+@mcp.tool()
+async def get_ready_tasks() -> str:
+    """Get tasks that are ready to start now because they are todo and not blocked by open dependencies."""
+    with Session(engine) as session:
+        tasks = session.exec(select(Task)).all()
+        deps = session.exec(select(TaskDependency)).all()
+        states = {state.task_id: state for state in build_operational_states(tasks, deps)}
+
+        ready_tasks = []
+        for task in tasks:
+            if task.id is None:
+                continue
+            state = states.get(task.id)
+            if not state or not state.is_ready:
+                continue
+            ready_tasks.append(
+                {
+                    "id": task.id,
+                    "title": task.title,
+                    "status": task.status,
+                    "priority": task.priority,
+                    "labels": task.labels,
+                    "blocks_open_count": state.blocks_open_count,
+                }
+            )
+
+        return json.dumps(ready_tasks)
+
+
+@mcp.tool()
+async def get_resume_packet(task_id: int) -> str:
+    """Get a single task's resume packet with memory, blockers, and recommended next actions."""
+    with Session(engine) as session:
+        task = session.get(Task, task_id)
+        if not task:
+            return f"Error: Task {task_id} not found."
+
+        entries = session.exec(select(ContextEntry).where(ContextEntry.task_id == task_id)).all()
+        dependencies = session.exec(select(TaskDependency)).all()
+        tasks = session.exec(select(Task)).all()
+        packet = build_resume_packet(task, entries, dependencies, tasks)
+        return packet.model_dump_json()
 
 @mcp.tool()
 async def create_task(title: str, description: str = "", parent_task_id: int | None = None) -> str:

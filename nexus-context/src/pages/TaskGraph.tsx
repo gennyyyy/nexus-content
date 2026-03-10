@@ -1,74 +1,83 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 import {
-    ReactFlow,
-    MiniMap,
-    Controls,
     Background,
-    useNodesState,
-    useEdgesState,
+    BackgroundVariant,
+    Controls,
+    MiniMap,
+    ReactFlow,
     addEdge,
-    BackgroundVariant
-} from '@xyflow/react';
-import type { Connection, Edge } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { type Task, fetchTasks, fetchDependencies } from '../lib/api';
-import { TaskContextModal } from '../components/TaskContextModal';
+    useEdgesState,
+    useNodesState,
+} from "@xyflow/react";
+import type { Connection, Edge, Node } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { fetchDependencies, fetchTasks, type Task } from "../lib/api";
+import { TaskContextModal } from "../components/TaskContextModal";
+
+type GraphNodeData = { label: string };
 
 export function TaskGraph() {
-    const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node<GraphNodeData>>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [loading, setLoading] = useState(true);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-    useEffect(() => {
-        loadGraph();
-    }, []);
-
-    async function loadGraph() {
+    const loadGraph = useCallback(async () => {
         try {
-            const tasksData = await fetchTasks();
-            const deps = await fetchDependencies();
+            const [tasksData, dependencies] = await Promise.all([fetchTasks(), fetchDependencies()]);
             setTasks(tasksData);
 
-            const newNodes: any = tasksData.map((t, i) => ({
-                id: t.id!.toString(),
-                position: { x: (i % 3) * 300 + 50, y: Math.floor(i / 3) * 150 + 50 },
-                data: { label: t.title },
+            const nextNodes: Node<GraphNodeData>[] = tasksData.map((task, index) => ({
+                id: String(task.id),
+                position: { x: (index % 3) * 300 + 50, y: Math.floor(index / 3) * 150 + 50 },
+                data: { label: task.title },
                 style: {
-                    background: '#09090b', // zinc-950
-                    color: '#f4f4f5', // zinc-50
-                    border: t.status === 'done' ? '1px solid #10b981' : '1px solid #27272a', // zinc-800
-                    borderRadius: '8px',
-                    padding: '16px',
-                    fontSize: '14px',
+                    background: "#09090b",
+                    color: "#f4f4f5",
+                    border: task.status === "done" ? "1px solid #10b981" : "1px solid #27272a",
+                    borderRadius: "8px",
+                    padding: "16px",
+                    fontSize: "14px",
                     fontWeight: 500,
                     width: 220,
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                }
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                },
             }));
 
-            const newEdges: any = deps.map(d => ({
-                id: `e${d.source_task_id}-${d.target_task_id}`,
-                source: d.source_task_id.toString(),
-                target: d.target_task_id.toString(),
+            const nextEdges: Edge[] = dependencies.map((dependency) => ({
+                id: `e${dependency.source_task_id}-${dependency.target_task_id}`,
+                source: String(dependency.source_task_id),
+                target: String(dependency.target_task_id),
                 animated: true,
-                label: d.type,
-                labelStyle: { fill: '#a1a1aa', fontWeight: 600 }, // zinc-400
-                style: { stroke: '#3b82f6', strokeWidth: 2 } // blue-500
+                label: dependency.type,
+                labelStyle: { fill: "#a1a1aa", fontWeight: 600 },
+                style: { stroke: "#3b82f6", strokeWidth: 2 },
             }));
 
-            setNodes(newNodes);
-            setEdges(newEdges);
-        } catch (e) {
-            console.error(e);
+            setNodes(nextNodes);
+            setEdges(nextEdges);
+        } catch (error) {
+            console.error(error);
         } finally {
             setLoading(false);
         }
-    }
+    }, [setEdges, setNodes]);
+
+    useEffect(() => {
+        void loadGraph();
+    }, [loadGraph]);
 
     const onConnect = useCallback((params: Connection | Edge) => {
-        setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#3b82f6', strokeWidth: 2 } }, eds));
+        setEdges((current) =>
+            addEdge(
+                {
+                    ...params,
+                    animated: true,
+                },
+                current,
+            ),
+        );
     }, [setEdges]);
 
     if (loading) {
@@ -76,14 +85,16 @@ export function TaskGraph() {
     }
 
     return (
-        <div className="p-8 h-full flex flex-col">
-            <div className="mb-6 flex justify-between items-center">
+        <div className="flex h-full flex-col p-8">
+            <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Dependency Graph</h1>
-                    <p className="text-zinc-400 text-sm">Visualize relationships. Connect tasks to mark dependencies (`Task A blocks Task B`). Click nodes to view AI Context.</p>
+                    <h1 className="mb-2 text-3xl font-bold tracking-tight text-white">Dependency Graph</h1>
+                    <p className="text-sm text-zinc-400">
+                        Visualize relationships, connect tasks, and open AI context from the graph.
+                    </p>
                 </div>
             </div>
-            <div className="flex-1 border border-zinc-800/60 bg-zinc-950 relative rounded-xl shadow-xl overflow-hidden cursor-pointer">
+            <div className="relative flex-1 overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-950 shadow-xl">
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -93,7 +104,7 @@ export function TaskGraph() {
                     colorMode="dark"
                     fitView
                     onNodeClick={(_, node) => {
-                        const task = tasks.find(t => t.id?.toString() === node.id);
+                        const task = tasks.find((item) => String(item.id) === node.id);
                         if (task) setSelectedTask(task);
                     }}
                 >
@@ -101,7 +112,7 @@ export function TaskGraph() {
                     <MiniMap
                         nodeColor="#27272a"
                         maskColor="rgba(0, 0, 0, 0.7)"
-                        className="bg-zinc-950 border border-zinc-800 rounded-md"
+                        className="rounded-md border border-zinc-800 bg-zinc-950"
                     />
                     <Background variant={BackgroundVariant.Dots} gap={24} size={2} color="#27272a" />
                 </ReactFlow>

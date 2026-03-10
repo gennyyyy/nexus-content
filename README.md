@@ -17,15 +17,12 @@ Nexus Context is a self-hosted platform designed to provide long-term context fo
 - Node.js 20+
 
 ### Step 1: Backend Setup
-```bash
+```powershell
 cd backend
 python -m venv venv
-# Windows:
 .\venv\Scripts\activate
-# Unix:
-source venv/bin/activate
 pip install -r requirements.txt
-python main.py
+uvicorn main:app --reload --port 8000
 ```
 *The backend runs on http://localhost:8000*
 

@@ -11,11 +11,15 @@ from models import (
     TaskDependencyCreate,
     ContextEntry,
     ContextEntryCreate,
+    ResumePacket,
     TaskCreate,
     TaskMemorySummary,
+    TaskOperationalState,
     TaskUpdate,
+    WorkspaceSnapshot,
 )
 from database import create_db_and_tables, get_session
+from workspace import build_memory_summary, build_operational_states, build_resume_packet, build_workspace_snapshot
 
 from mcp_server import mcp
 
@@ -107,6 +111,11 @@ def create_dependency(dependency: TaskDependencyCreate, session: Session = Depen
         )
     ).first()
     if existing:
+        existing.source_handle = dependency.source_handle
+        existing.target_handle = dependency.target_handle
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
         return existing
 
     db_dependency = TaskDependency.model_validate(dependency)
@@ -129,44 +138,6 @@ def delete_dependency(dependency_id: int, session: Session = Depends(get_session
 @app.get("/api/tasks/{task_id}/context", response_model=List[ContextEntry])
 def read_task_context(task_id: int, session: Session = Depends(get_session)):
     return session.exec(select(ContextEntry).where(ContextEntry.task_id == task_id)).all()
-
-
-def build_memory_summary(task: Task, entries: list[ContextEntry]) -> TaskMemorySummary:
-    ordered_entries = sorted(entries, key=lambda entry: entry.timestamp, reverse=True)
-    recent_entries = ordered_entries[:8]
-    latest_entry = recent_entries[0] if recent_entries else None
-
-    def split_lines(value: str | None) -> list[str]:
-        if not value:
-            return []
-        return [line.strip() for line in value.splitlines() if line.strip()]
-
-    recent_files: list[str] = []
-    active_decisions: list[str] = []
-    open_questions: list[str] = []
-
-    for entry in recent_entries:
-        for file_name in split_lines(entry.files_touched):
-            if file_name not in recent_files:
-                recent_files.append(file_name)
-        for decision in split_lines(entry.decisions):
-            if decision not in active_decisions:
-                active_decisions.append(decision)
-        for question in split_lines(entry.open_questions):
-            if question not in open_questions:
-                open_questions.append(question)
-
-    return TaskMemorySummary(
-        task_id=task.id or 0,
-        task_title=task.title,
-        task_status=task.status,
-        latest_summary=latest_entry.summary if latest_entry else None,
-        latest_next_step=latest_entry.next_step if latest_entry else None,
-        active_decisions=active_decisions[:6],
-        open_questions=open_questions[:6],
-        recent_files=recent_files[:10],
-        recent_entries=recent_entries,
-    )
 
 
 @app.post("/api/tasks/{task_id}/context", response_model=ContextEntry)
@@ -213,6 +184,18 @@ def read_task_memory(task_id: int, session: Session = Depends(get_session)):
     return build_memory_summary(task, entries)
 
 
+@app.get("/api/tasks/{task_id}/resume-packet", response_model=ResumePacket)
+def read_task_resume_packet(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    entries = session.exec(select(ContextEntry).where(ContextEntry.task_id == task_id)).all()
+    dependencies = session.exec(select(TaskDependency)).all()
+    tasks = session.exec(select(Task)).all()
+    return build_resume_packet(task, entries, dependencies, tasks)
+
+
 @app.get("/api/memory", response_model=List[TaskMemorySummary])
 def read_memory_overview(session: Session = Depends(get_session)):
     tasks = session.exec(select(Task)).all()
@@ -230,5 +213,20 @@ def read_memory_overview(session: Session = Depends(get_session)):
     ]
     summaries.sort(key=lambda summary: len(summary.recent_entries), reverse=True)
     return summaries
+
+
+@app.get("/api/task-states", response_model=List[TaskOperationalState])
+def read_task_operational_states(session: Session = Depends(get_session)):
+    tasks = session.exec(select(Task)).all()
+    dependencies = session.exec(select(TaskDependency)).all()
+    return build_operational_states(tasks, dependencies)
+
+
+@app.get("/api/workspace", response_model=WorkspaceSnapshot)
+def read_workspace_snapshot(session: Session = Depends(get_session)):
+    tasks = session.exec(select(Task)).all()
+    dependencies = session.exec(select(TaskDependency)).all()
+    entries = session.exec(select(ContextEntry)).all()
+    return build_workspace_snapshot(tasks, dependencies, entries)
 
 app.mount("/mcp", mcp.sse_app("/mcp"))

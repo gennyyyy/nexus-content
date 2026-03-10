@@ -84,9 +84,9 @@ export function KanbanBoard() {
                         placeholder="New task title..."
                         value={newTaskTitle}
                         onChange={e => setNewTaskTitle(e.target.value)}
-                        className="bg-zinc-900 border border-zinc-800 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 transition-all"
+                        className="bg-zinc-900 border border-zinc-800 rounded-sm px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 transition-all"
                     />
-                    <button type="submit" className="bg-white text-black px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 hover:bg-zinc-200 transition-colors">
+                    <button type="submit" className="bg-white text-black px-3 py-1.5 rounded-sm text-sm font-medium flex items-center gap-1 hover:bg-zinc-200 transition-colors">
                         <Plus size={16} /> Add
                     </button>
                 </form>
@@ -97,10 +97,10 @@ export function KanbanBoard() {
                     {COLUMNS.map(col => {
                         const colTasks = tasks.filter(t => t.status === col.id);
                         return (
-                            <div key={col.id} className={`flex flex-col w-80 shrink-0 rounded-xl border backdrop-blur-sm ${col.bg}`}>
-                                <div className="p-4 border-b border-inherit bg-black/20 flex items-center justify-between rounded-t-xl">
+                            <div key={col.id} className={`flex flex-col w-80 shrink-0 rounded-md border backdrop-blur-sm ${col.bg}`}>
+                                <div className="p-4 border-b border-inherit bg-black/20 flex items-center justify-between rounded-t-md">
                                     <h3 className="font-semibold text-zinc-200">{col.title}</h3>
-                                    <span className="text-xs bg-black/40 text-zinc-400 px-2 py-1 rounded-full">{colTasks.length}</span>
+                                    <span className="text-xs bg-black/40 text-zinc-400 px-2 py-1 rounded-sm">{colTasks.length}</span>
                                 </div>
 
                                 <Droppable droppableId={col.id}>
@@ -116,7 +116,7 @@ export function KanbanBoard() {
                                                         <div
                                                             ref={provided.innerRef}
                                                             {...provided.draggableProps}
-                                                            className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 group transition-all cursor-pointer
+                                                            className={`bg-zinc-900 border border-zinc-800 rounded-sm p-4 group transition-all cursor-pointer
                                 ${snapshot.isDragging ? 'shadow-2xl shadow-black ring-2 ring-blue-500/50 scale-105 z-50' : 'hover:border-zinc-700 hover:shadow-lg'}
                               `}
                                                             onClick={() => setSelectedTask(t)}

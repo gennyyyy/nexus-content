@@ -22,6 +22,11 @@ TASK_MIGRATIONS = {
     "labels": "ALTER TABLE task ADD COLUMN labels VARCHAR",
 }
 
+TASK_DEPENDENCY_MIGRATIONS = {
+    "source_handle": "ALTER TABLE taskdependency ADD COLUMN source_handle VARCHAR",
+    "target_handle": "ALTER TABLE taskdependency ADD COLUMN target_handle VARCHAR",
+}
+
 
 def run_dev_migrations():
     inspector = inspect(engine)
@@ -35,12 +40,20 @@ def run_dev_migrations():
     else:
         task_columns = {column["name"] for column in inspector.get_columns("task")}
 
+    if "taskdependency" not in inspector.get_table_names():
+        task_dependency_columns = set()
+    else:
+        task_dependency_columns = {column["name"] for column in inspector.get_columns("taskdependency")}
+
     with engine.begin() as connection:
         for column_name, statement in CONTEXT_ENTRY_MIGRATIONS.items():
             if column_name not in context_columns:
                 connection.execute(text(statement))
         for column_name, statement in TASK_MIGRATIONS.items():
             if column_name not in task_columns:
+                connection.execute(text(statement))
+        for column_name, statement in TASK_DEPENDENCY_MIGRATIONS.items():
+            if column_name not in task_dependency_columns:
                 connection.execute(text(statement))
 
 def create_db_and_tables():

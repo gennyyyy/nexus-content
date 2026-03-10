@@ -15,6 +15,8 @@ export interface TaskDependency {
     source_task_id: number;
     target_task_id: number;
     type: string;
+    source_handle?: string | null;
+    target_handle?: string | null;
 }
 
 export interface ContextEntry {
@@ -41,6 +43,41 @@ export interface TaskMemorySummary {
     open_questions: string[];
     recent_files: string[];
     recent_entries: ContextEntry[];
+}
+
+export interface RelatedTaskSummary {
+    task_id: number;
+    task_title: string;
+    task_status: Task["status"];
+    dependency_type: string;
+}
+
+export interface TaskOperationalState {
+    task_id: number;
+    is_ready: boolean;
+    is_blocked: boolean;
+    blocked_by_open_count: number;
+    blocks_open_count: number;
+    blocked_by: RelatedTaskSummary[];
+    unblocks: RelatedTaskSummary[];
+}
+
+export interface WorkspaceSnapshot {
+    tasks: Task[];
+    dependencies: TaskDependency[];
+    memory: TaskMemorySummary[];
+    task_states: TaskOperationalState[];
+}
+
+export interface ResumePacket {
+    task: Task;
+    task_state: TaskOperationalState;
+    memory: TaskMemorySummary;
+    blocked_by: RelatedTaskSummary[];
+    unblocks: RelatedTaskSummary[];
+    handoff_complete: boolean;
+    recommended_next_actions: string[];
+    agent_brief: string;
 }
 
 export async function fetchTasks(): Promise<Task[]> {
@@ -119,8 +156,20 @@ export async function fetchTaskMemory(taskId: number): Promise<TaskMemorySummary
     return res.json();
 }
 
+export async function fetchTaskResumePacket(taskId: number): Promise<ResumePacket> {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}/resume-packet`);
+    if (!res.ok) throw new Error("Failed to fetch task resume packet");
+    return res.json();
+}
+
 export async function fetchMemoryOverview(): Promise<TaskMemorySummary[]> {
     const res = await fetch(`${API_BASE}/memory`);
     if (!res.ok) throw new Error("Failed to fetch memory overview");
+    return res.json();
+}
+
+export async function fetchWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
+    const res = await fetch(`${API_BASE}/workspace`);
+    if (!res.ok) throw new Error("Failed to fetch workspace snapshot");
     return res.json();
 }

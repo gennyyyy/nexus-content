@@ -13,6 +13,8 @@ class TaskDependency(SQLModel, table=True):
     source_task_id: int = Field(foreign_key="task.id")
     target_task_id: int = Field(foreign_key="task.id")
     type: str = Field(default="blocks") # How source relates to target
+    source_handle: Optional[str] = None
+    target_handle: Optional[str] = None
 
 class ContextEntry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -65,10 +67,47 @@ class TaskMemorySummary(SQLModel):
     recent_entries: List[ContextEntry] = []
 
 
+class RelatedTaskSummary(SQLModel):
+    task_id: int
+    task_title: str
+    task_status: TaskStatus
+    dependency_type: str
+
+
+class TaskOperationalState(SQLModel):
+    task_id: int
+    is_ready: bool = False
+    is_blocked: bool = False
+    blocked_by_open_count: int = 0
+    blocks_open_count: int = 0
+    blocked_by: List[RelatedTaskSummary] = []
+    unblocks: List[RelatedTaskSummary] = []
+
+
+class WorkspaceSnapshot(SQLModel):
+    tasks: List["Task"] = []
+    dependencies: List[TaskDependency] = []
+    memory: List[TaskMemorySummary] = []
+    task_states: List[TaskOperationalState] = []
+
+
+class ResumePacket(SQLModel):
+    task: "Task"
+    task_state: TaskOperationalState
+    memory: TaskMemorySummary
+    blocked_by: List[RelatedTaskSummary] = []
+    unblocks: List[RelatedTaskSummary] = []
+    handoff_complete: bool = False
+    recommended_next_actions: List[str] = []
+    agent_brief: str
+
+
 class TaskDependencyCreate(SQLModel):
     source_task_id: int
     target_task_id: int
     type: str = "blocks"
+    source_handle: Optional[str] = None
+    target_handle: Optional[str] = None
 
 class Task(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

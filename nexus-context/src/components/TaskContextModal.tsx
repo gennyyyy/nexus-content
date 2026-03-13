@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { X, AlignLeft, Clock, Brain, GitBranch, Flag, HelpCircle, Save, ListChecks, Workflow } from "lucide-react";
 import {
     createTaskContext,
@@ -31,6 +31,44 @@ export function TaskContextModal({ task, onClose }: Props) {
         open_questions: "",
         next_step: "",
     });
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    // Close on Escape key
+    const handleKeyDown = useCallback(
+        (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                onClose();
+                return;
+            }
+            // Focus trapping
+            if (e.key === "Tab" && panelRef.current) {
+                const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey) {
+                    if (document.activeElement === first) {
+                        e.preventDefault();
+                        last?.focus();
+                    }
+                } else {
+                    if (document.activeElement === last) {
+                        e.preventDefault();
+                        first?.focus();
+                    }
+                }
+            }
+        },
+        [onClose]
+    );
+
+    useEffect(() => {
+        if (task) {
+            document.addEventListener("keydown", handleKeyDown);
+            return () => document.removeEventListener("keydown", handleKeyDown);
+        }
+    }, [task, handleKeyDown]);
 
     useEffect(() => {
         if (task?.id) {
@@ -115,16 +153,22 @@ export function TaskContextModal({ task, onClose }: Props) {
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} aria-hidden="true" />
 
-            <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-zinc-950 border-l border-zinc-800 shadow-2xl z-50 flex flex-col pt-14">
-                <button onClick={onClose} className="absolute top-5 right-5 p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
+            <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="task-context-modal-title"
+                className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-zinc-950 border-l border-zinc-800 shadow-2xl z-50 flex flex-col pt-14"
+            >
+                <button onClick={onClose} className="absolute top-5 right-5 p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors" aria-label="Close context panel">
                     <X size={20} />
                 </button>
 
                 <div className="px-6 pb-5 border-b border-zinc-800/60">
                     <div className="text-xs font-bold tracking-widest text-blue-500 uppercase mb-1.5">TASK ID: {task.id}</div>
-                    <h2 className="text-xl font-bold text-white mb-3 leading-tight">{task.title}</h2>
+                    <h2 id="task-context-modal-title" className="text-xl font-bold text-white mb-3 leading-tight">{task.title}</h2>
 
                     <div className="flex items-start gap-3 text-zinc-400 bg-zinc-900/40 p-3 border border-zinc-800/60">
                         <AlignLeft size={16} className="mt-0.5 shrink-0 text-zinc-500" />

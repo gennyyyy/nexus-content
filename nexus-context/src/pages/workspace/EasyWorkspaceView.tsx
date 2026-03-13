@@ -1,9 +1,13 @@
+import { useCallback, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { Brain, GripVertical } from "lucide-react";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import type { Task, TaskMemorySummary, TaskOperationalState } from "../../lib/api";
 import { BOARD_COLUMNS, PRIORITY_BADGES, STATUS_META } from "./constants";
 import { getFlowBadge, nextStep, normalizePriority, taskSummary } from "./utils";
 import { EmptyState, Tag } from "./WorkspacePrimitives";
+import { TaskHistoryPanel } from "../../components/TaskHistoryPanel";
 import type { FlowBadge, InspectorDraft, TaskBuckets } from "./types";
 
 interface Props {
@@ -43,6 +47,13 @@ export function EasyWorkspaceView({
     onQuickOpenTask,
     onOpenContext,
 }: Props) {
+    const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; action: () => void } | null>(null);
+    const [inspectorTab, setInspectorTab] = useState<"details" | "history">("details");
+
+    const requestConfirm = useCallback((title: string, message: string, action: () => void) => {
+        setConfirmAction({ title, message, action });
+    }, []);
+
     return (
         <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_340px]">
             {/* Kanban Board */}
@@ -103,20 +114,25 @@ export function EasyWorkspaceView({
                                             >
                                                 {columnTasks.map((task, index) => {
                                                     const memory = task.id ? memoryByTask.get(task.id) : undefined;
-                                                    const flow = task.id ? getFlowBadge(task, operationalByTask.get(task.id)) : null;
+                                                    const opState = task.id ? operationalByTask.get(task.id) : undefined;
+                                                    const flow = task.id ? getFlowBadge(task, opState) : null;
+
+                                                    const isHot = task.priority === "critical" || (opState?.blocked_by_open_count ?? 0) >= 2;
+                                                    const hotClass = isHot ? "border-rose-500/50 shadow-[inset_0_0_20px_rgba(225,29,72,0.15)]" : "border-white/5";
+
                                                     return (
                                                         <Draggable key={String(task.id)} draggableId={String(task.id)} index={index}>
                                                             {(dragProvided, dragSnapshot) => (
                                                                 <div
                                                                     ref={dragProvided.innerRef}
                                                                     {...dragProvided.draggableProps}
-                                                                    className={`border border-zinc-800 bg-zinc-900/88 p-2.5 transition-all duration-200 ${dragSnapshot.isDragging ? "border-sky-400/45 shadow-[0_16px_40px_rgba(2,6,23,0.5)]" : "hover:border-zinc-700 hover:bg-zinc-900"}`}
+                                                                    className={`border bg-zinc-900/40 backdrop-blur-md p-2.5 transition-all duration-200 ${dragSnapshot.isDragging ? "border-sky-400/45 shadow-[0_16px_40px_rgba(2,6,23,0.5)]" : `hover:border-white/20 hover:bg-zinc-900/60 ${hotClass}`}`}
                                                                 >
                                                                     <div className="flex items-start gap-2.5">
                                                                         <button
                                                                             type="button"
                                                                             {...dragProvided.dragHandleProps}
-                                                                            className="border border-zinc-800 bg-zinc-950 p-1.5 text-zinc-500 transition-colors duration-150 hover:border-zinc-700 hover:text-zinc-200 cursor-grab active:cursor-grabbing"
+                                                                            className={`border bg-zinc-900/40 p-1.5 text-zinc-500 transition-colors duration-150 hover:text-zinc-200 cursor-grab active:cursor-grabbing ${isHot ? "border-rose-500/30" : "border-white/5"}`}
                                                                             aria-label={`Drag ${task.title}`}
                                                                         >
                                                                             <GripVertical size={14} />
@@ -204,111 +220,164 @@ export function EasyWorkspaceView({
 
                 {/* Editable Inspector */}
                 <div className="surface-panel animate-fade-up-delay-2 nexus-scroll min-h-0 flex-1 overflow-y-auto p-4">
-                    {selectedTask ? (
-                        <div className="space-y-3">
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Inspector</div>
-                                    <h3 className="mt-1 text-lg font-semibold text-zinc-50">{selectedTask.title}</h3>
-                                    <p className="mt-1 text-sm leading-6 text-zinc-400">
-                                        {selectedTask.description || "No description captured yet."}
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => onOpenContext(selectedTask)}
-                                    className="shrink-0 border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs font-semibold text-zinc-100 transition-colors duration-150 hover:border-zinc-600"
-                                >
-                                    <Brain size={14} className="inline mr-1" />
-                                    Memory
-                                </button>
-                            </div>
-
-                            {/* Editable Fields */}
-                            <div className="grid gap-2">
-                                <input
-                                    value={inspectorDraft.title}
-                                    onChange={(e) => onInspectorFieldChange("title", e.target.value)}
-                                    placeholder="Title"
-                                    className="w-full border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors duration-150 focus:border-zinc-600"
-                                />
-                                <textarea
-                                    value={inspectorDraft.description}
-                                    onChange={(e) => onInspectorFieldChange("description", e.target.value)}
-                                    placeholder="Description"
-                                    className="min-h-[80px] w-full resize-y border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors duration-150 focus:border-zinc-600"
-                                />
-                                <div className="grid grid-cols-2 gap-2">
-                                    <select
-                                        value={inspectorDraft.priority}
-                                        onChange={(e) => onInspectorFieldChange("priority", e.target.value)}
-                                        className="w-full border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none"
-                                    >
-                                        <option value="low">Low</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="high">High</option>
-                                        <option value="critical">Critical</option>
-                                    </select>
-                                    <input
-                                        value={inspectorDraft.labels}
-                                        onChange={(e) => onInspectorFieldChange("labels", e.target.value)}
-                                        placeholder="labels"
-                                        className="w-full border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors duration-150 focus:border-zinc-600"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
+                    <AnimatePresence mode="wait">
+                        {selectedTask ? (
+                            <motion.div
+                                key={selectedTask.id}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.2 }}
+                                className="space-y-3"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Inspector</div>
+                                        <h3 className="mt-1 text-lg font-semibold text-zinc-50">{selectedTask.title}</h3>
+                                        <p className="mt-1 text-sm leading-6 text-zinc-400">
+                                            {selectedTask.description || "No description captured yet."}
+                                        </p>
+                                    </div>
                                     <button
                                         type="button"
-                                        onClick={() => void onSaveTaskDetails()}
-                                        className="border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-semibold text-zinc-100 transition-colors duration-150 hover:border-zinc-600 hover:bg-zinc-900"
+                                        onClick={() => onOpenContext(selectedTask)}
+                                        className="shrink-0 border border-white/5 bg-zinc-900/40 backdrop-blur-md px-2.5 py-1.5 text-xs font-semibold text-zinc-100 transition-colors duration-150 hover:border-white/10"
                                     >
-                                        Save Details
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => void onDeleteSelectedTask()}
-                                        className="border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-200 transition-colors duration-150 hover:bg-rose-500/16"
-                                    >
-                                        Delete Task
+                                        <Brain size={14} className="inline mr-1" />
+                                        Memory
                                     </button>
                                 </div>
-                            </div>
 
-                            {/* Status Buttons */}
-                            <div className="flex flex-wrap gap-1.5">
-                                {(["todo", "in_progress", "done"] as const).map((status) => (
+                                {/* Tabs */}
+                                <div className="flex gap-4 border-b border-zinc-800/80 mb-4 pb-2">
                                     <button
-                                        key={status}
-                                        type="button"
-                                        onClick={() => void onStatusChange(status)}
-                                        className={`border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] transition-colors duration-150 ${selectedTask.status === status ? STATUS_META[status].badge : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700 hover:text-zinc-100"}`}
+                                        onClick={() => setInspectorTab("details")}
+                                        className={`text-[10px] font-semibold uppercase tracking-wider ${inspectorTab === "details" ? "text-sky-400" : "text-zinc-500 hover:text-zinc-400"}`}
                                     >
-                                        {STATUS_META[status].label}
+                                        Details
                                     </button>
-                                ))}
-                            </div>
-
-                            {/* Flow + Next Step */}
-                            <div className="border border-zinc-800/70 bg-zinc-950/70 p-3">
-                                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Flow</div>
-                                <div className="flex flex-wrap gap-1.5 mb-2">
-                                    <Tag className={STATUS_META[selectedTask.status].badge}>
-                                        {STATUS_META[selectedTask.status].label}
-                                    </Tag>
-                                    {selectedFlow ? <Tag className={selectedFlow[1]}>{selectedFlow[0]}</Tag> : null}
-                                    <Tag className="border-zinc-700 bg-zinc-950 text-zinc-300">
-                                        {selectedState?.blocked_by_open_count || 0} blockers
-                                    </Tag>
+                                    <button
+                                        onClick={() => setInspectorTab("history")}
+                                        className={`text-[10px] font-semibold uppercase tracking-wider ${inspectorTab === "history" ? "text-sky-400" : "text-zinc-500 hover:text-zinc-400"}`}
+                                    >
+                                        History
+                                    </button>
                                 </div>
-                                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 mb-1">Next Step</div>
-                                <p className="text-sm leading-6 text-zinc-300">{nextStep(selectedMemory)}</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <EmptyState message="Select a task from a lane to inspect and edit it." />
-                    )}
+
+                                {inspectorTab === "details" ? (
+                                    <>
+                                        {/* Editable Fields */}
+                                        <div className="grid gap-2">
+                                            <input
+                                                value={inspectorDraft.title}
+                                                onChange={(e) => onInspectorFieldChange("title", e.target.value)}
+                                                placeholder="Title"
+                                                className="w-full border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none transition-colors duration-150 focus:border-zinc-600"
+                                            />
+                                            <textarea
+                                                value={inspectorDraft.description}
+                                                onChange={(e) => onInspectorFieldChange("description", e.target.value)}
+                                                placeholder="Description"
+                                                className="min-h-[80px] w-full resize-y border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none transition-colors duration-150 focus:border-zinc-600"
+                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select
+                                                    value={inspectorDraft.priority}
+                                                    onChange={(e) => onInspectorFieldChange("priority", e.target.value)}
+                                                    className="w-full border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none"
+                                                >
+                                                    <option value="low">Low</option>
+                                                    <option value="medium">Medium</option>
+                                                    <option value="high">High</option>
+                                                    <option value="critical">Critical</option>
+                                                </select>
+                                                <input
+                                                    value={inspectorDraft.labels}
+                                                    onChange={(e) => onInspectorFieldChange("labels", e.target.value)}
+                                                    placeholder="labels"
+                                                    className="w-full border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none transition-colors duration-150 focus:border-zinc-600"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void onSaveTaskDetails()}
+                                                    className="border border-white/5 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm font-semibold text-zinc-100 transition-colors duration-150 hover:border-white/10 hover:bg-zinc-900/60"
+                                                >
+                                                    Save Details
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => requestConfirm("Delete Task", `Are you sure you want to delete "${selectedTask.title}"? All context entries and dependencies will be permanently removed.`, () => void onDeleteSelectedTask())}
+                                                    className="border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-200 transition-colors duration-150 hover:bg-rose-500/16"
+                                                    aria-label="Delete selected task"
+                                                >
+                                                    Delete Task
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Status Buttons */}
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {(["todo", "in_progress", "done"] as const).map((status) => (
+                                                <button
+                                                    key={status}
+                                                    type="button"
+                                                    onClick={() => void onStatusChange(status)}
+                                                    className={`border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] transition-colors duration-150 ${selectedTask.status === status ? STATUS_META[status].badge : "border-white/5 bg-zinc-900/40 backdrop-blur-md text-zinc-400 hover:border-white/10 hover:text-zinc-100"}`}
+                                                >
+                                                    {STATUS_META[status].label}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Flow + Next Step */}
+                                        <div className="border border-white/5 bg-zinc-900/40 backdrop-blur-md p-3">
+                                            <div className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Flow</div>
+                                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                                <Tag className={STATUS_META[selectedTask.status].badge}>
+                                                    {STATUS_META[selectedTask.status].label}
+                                                </Tag>
+                                                {selectedFlow ? <Tag className={selectedFlow[1]}>{selectedFlow[0]}</Tag> : null}
+                                                <Tag className="border-white/5 bg-zinc-900/40 backdrop-blur-md text-zinc-300">
+                                                    {selectedState?.blocked_by_open_count || 0} blockers
+                                                </Tag>
+                                            </div>
+                                            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 mb-1">Next Step</div>
+                                            <p className="text-sm leading-6 text-zinc-300">{nextStep(selectedMemory)}</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="mt-2 text-zinc-100 flex-1 h-[450px]">
+                                        <TaskHistoryPanel taskId={selectedTask.id!} />
+                                    </div>
+                                )}
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="empty"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <EmptyState message="Select a task from a lane to inspect and edit it." />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
+            <ConfirmDialog
+                open={!!confirmAction}
+                title={confirmAction?.title ?? ""}
+                message={confirmAction?.message ?? ""}
+                confirmLabel="Delete"
+                onConfirm={() => {
+                    confirmAction?.action();
+                    setConfirmAction(null);
+                }}
+                onCancel={() => setConfirmAction(null)}
+            />
         </div>
     );
 }

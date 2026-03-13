@@ -5,6 +5,7 @@ Nexus Context is a self-hosted platform designed to provide long-term context fo
 ![Nexus Context Dashboard](https://github.com/user-attachments/assets/vibrant-ui-placeholder)
 
 ## Key Features
+- **Control Center**: Operational dashboard with the ready queue, handoff health, and audit timeline.
 - **Kanban Board**: Drag-and-drop task management.
 - **Dependency Graph**: Visual node-based mapping of task relationships using React Flow.
 - **Context Logs**: Sequential feed of AI-generated progress logs for every task.
@@ -33,6 +34,8 @@ npm install
 npm run dev
 ```
 *The frontend runs on http://localhost:5173*
+
+The web app now opens on the **Control Center** by default. The task workspace remains available at `/workspace`, and the memory view remains available at `/memory`.
 
 ## Running as an MCP Server
 Point your MCP client (like Claude Desktop or MCP Inspector) to:

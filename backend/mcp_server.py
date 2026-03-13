@@ -1,4 +1,5 @@
 import json
+from activity import normalize_priority, record_activity, status_label, truncate
 from mcp.server.fastmcp import FastMCP
 from sqlmodel import Session, select
 from database import engine
@@ -141,14 +142,41 @@ async def create_task(title: str, description: str = "", parent_task_id: int | N
     with Session(engine) as session:
         task = Task(title=title, description=description, status=TaskStatus.TODO)
         session.add(task)
-        session.commit()
-        session.refresh(task)
+        session.flush()
+        record_activity(
+            session,
+            event_type="task.created",
+            entity_type="task",
+            entity_id=task.id,
+            task_id=task.id,
+            task_title=task.title,
+            title=f'Created task "{task.title}"',
+            summary=f'Started in {status_label(task.status)} with {normalize_priority(task.priority)} priority.',
+            actor="MCP agent",
+            source="mcp",
+        )
         
         if parent_task_id is not None:
+            parent_task = session.get(Task, parent_task_id)
             dep = TaskDependency(source_task_id=task.id, target_task_id=parent_task_id, type="blocks")
             session.add(dep)
-            session.commit()
-            
+            session.flush()
+            record_activity(
+                session,
+                event_type="dependency.created",
+                entity_type="dependency",
+                entity_id=dep.id,
+                task_id=parent_task_id,
+                task_title=parent_task.title if parent_task else None,
+                title=f'Linked "{task.title}" to "{parent_task.title if parent_task else f"Task {parent_task_id}"}"',
+                summary="Added a blocks dependency from the new task to its parent task.",
+                actor="MCP agent",
+                source="mcp",
+            )
+
+        session.commit()
+        session.refresh(task)
+             
         return f"Task created with ID: {task.id}"
 
 @mcp.tool()
@@ -160,8 +188,22 @@ async def update_task_status(task_id: int, status: str) -> str:
             return f"Error: Task {task_id} not found."
         
         try:
+            previous_status = task.status
             task.status = TaskStatus(status)
             session.add(task)
+            if previous_status != task.status:
+                record_activity(
+                    session,
+                    event_type="task.status_changed",
+                    entity_type="task",
+                    entity_id=task.id,
+                    task_id=task.id,
+                    task_title=task.title,
+                    title=f'Moved "{task.title}" to {status_label(task.status)}',
+                    summary=f'Status changed from {status_label(previous_status)} to {status_label(task.status)}.',
+                    actor="MCP agent",
+                    source="mcp",
+                )
             session.commit()
             return f"Task {task_id} updated to {status}."
         except ValueError:
@@ -177,6 +219,19 @@ async def add_context(task_id: int, content: str) -> str:
             
         entry = ContextEntry(task_id=task_id, content=content)
         session.add(entry)
+        session.flush()
+        record_activity(
+            session,
+            event_type="context.note",
+            entity_type="context",
+            entity_id=entry.id,
+            task_id=task.id,
+            task_title=task.title,
+            title=f'Added context for "{task.title}"',
+            summary=f"Logged task context. {truncate(content)}".strip(),
+            actor="MCP agent",
+            source="mcp",
+        )
         session.commit()
         return f"Context added to Task {task_id}."
 
@@ -224,5 +279,18 @@ async def add_memory_handoff(
             next_step=next_step or None,
         )
         session.add(entry)
+        session.flush()
+        record_activity(
+            session,
+            event_type="context.handoff",
+            entity_type="context",
+            entity_id=entry.id,
+            task_id=task.id,
+            task_title=task.title,
+            title=f'Saved handoff for "{task.title}"',
+            summary=f"Captured a structured handoff. {truncate(summary)}".strip(),
+            actor="MCP agent",
+            source="mcp",
+        )
         session.commit()
         return f"Memory handoff added to Task {task_id}."

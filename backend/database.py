@@ -20,6 +20,7 @@ CONTEXT_ENTRY_MIGRATIONS = {
 TASK_MIGRATIONS = {
     "priority": "ALTER TABLE task ADD COLUMN priority VARCHAR DEFAULT 'medium'",
     "labels": "ALTER TABLE task ADD COLUMN labels VARCHAR",
+    "project_id": "ALTER TABLE task ADD COLUMN project_id VARCHAR",
 }
 
 TASK_DEPENDENCY_MIGRATIONS = {

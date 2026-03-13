@@ -7,6 +7,7 @@ export interface Task {
     status: "todo" | "in_progress" | "done";
     priority?: "low" | "medium" | "high" | "critical";
     labels?: string;
+    project_id?: string | null;
     created_at?: string;
 }
 
@@ -80,8 +81,84 @@ export interface ResumePacket {
     agent_brief: string;
 }
 
-export async function fetchTasks(): Promise<Task[]> {
-    const res = await fetch(`${API_BASE}/tasks`);
+export interface ReadyQueueItem {
+    task_id: number;
+    task_title: string;
+    description?: string | null;
+    task_status: Task["status"];
+    priority: string;
+    labels?: string | null;
+    latest_summary?: string | null;
+    latest_next_step?: string | null;
+    blocks_open_count: number;
+    recent_files: string[];
+    handoff_complete: boolean;
+}
+
+export interface AttentionTaskItem {
+    task_id: number;
+    task_title: string;
+    task_status: Task["status"];
+    priority: string;
+    is_blocked: boolean;
+    blocked_by_open_count: number;
+    missing_summary: boolean;
+    missing_next_step: boolean;
+    recent_entries: number;
+    latest_summary?: string | null;
+    latest_next_step?: string | null;
+}
+
+export interface HandoffPulseItem {
+    task_id: number;
+    task_title: string;
+    task_status: Task["status"];
+    summary?: string | null;
+    next_step?: string | null;
+    timestamp?: string | null;
+}
+
+export interface MCPServerStatus {
+    name: string;
+    transport: string;
+    status: string;
+    sse_url: string;
+    post_message_url: string;
+}
+
+export interface ControlCenterSnapshot {
+    generated_at: string;
+    total_tasks: number;
+    todo_count: number;
+    in_progress_count: number;
+    done_count: number;
+    ready_count: number;
+    blocked_count: number;
+    handoff_gap_count: number;
+    handoffs_last_7_days: number;
+    ready_queue: ReadyQueueItem[];
+    attention_tasks: AttentionTaskItem[];
+    latest_handoffs: HandoffPulseItem[];
+    server: MCPServerStatus;
+}
+
+export interface ActivityEvent {
+    id: number;
+    event_type: string;
+    entity_type: string;
+    entity_id?: number | null;
+    task_id?: number | null;
+    task_title?: string | null;
+    title: string;
+    summary: string;
+    actor: string;
+    source: string;
+    created_at: string;
+}
+
+export async function fetchTasks(projectId?: string | null): Promise<Task[]> {
+    const url = projectId ? `${API_BASE}/tasks?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/tasks`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch tasks");
     return res.json();
 }
@@ -162,14 +239,41 @@ export async function fetchTaskResumePacket(taskId: number): Promise<ResumePacke
     return res.json();
 }
 
-export async function fetchMemoryOverview(): Promise<TaskMemorySummary[]> {
-    const res = await fetch(`${API_BASE}/memory`);
+export async function fetchProjects(): Promise<string[]> {
+    const res = await fetch(`${API_BASE}/projects`);
+    if (!res.ok) throw new Error("Failed to fetch projects");
+    return res.json();
+}
+
+export async function fetchMemoryOverview(projectId?: string | null): Promise<TaskMemorySummary[]> {
+    const url = projectId ? `${API_BASE}/memory?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/memory`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch memory overview");
     return res.json();
 }
 
-export async function fetchWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
-    const res = await fetch(`${API_BASE}/workspace`);
+export async function fetchWorkspaceSnapshot(projectId?: string | null): Promise<WorkspaceSnapshot> {
+    const url = projectId ? `${API_BASE}/workspace?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/workspace`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch workspace snapshot");
+    return res.json();
+}
+
+export async function fetchControlCenterSnapshot(projectId?: string | null): Promise<ControlCenterSnapshot> {
+    const url = projectId ? `${API_BASE}/control-center?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/control-center`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch control center snapshot");
+    return res.json();
+}
+
+export async function fetchActivityFeed(limit = 60): Promise<ActivityEvent[]> {
+    const res = await fetch(`${API_BASE}/activity?limit=${limit}`);
+    if (!res.ok) throw new Error("Failed to fetch activity feed");
+    return res.json();
+}
+
+export async function fetchTaskActivity(taskId: number): Promise<ActivityEvent[]> {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}/activity`);
+    if (!res.ok) throw new Error("Failed to fetch task activity");
     return res.json();
 }

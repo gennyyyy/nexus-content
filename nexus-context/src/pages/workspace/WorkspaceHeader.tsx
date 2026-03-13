@@ -61,7 +61,7 @@ export function WorkspaceHeader({
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1 border border-zinc-800 bg-zinc-950 p-1">
+                    <div className="flex items-center gap-1 border border-zinc-800 bg-zinc-900/40 backdrop-blur-md p-1">
                         <ModeBtn
                             active={workspaceMode === "easy"}
                             icon={<LayoutDashboard size={14} />}
@@ -84,9 +84,10 @@ export function WorkspaceHeader({
                             value={newTaskTitle}
                             onChange={(event) => onNewTaskTitleChange(event.target.value)}
                             placeholder="Create a new task..."
-                            className="w-56 border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-zinc-600"
+                            aria-label="New task title"
+                            className="w-56 border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-zinc-600"
                         />
-                        <button className="inline-flex items-center gap-1.5 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-950 transition hover:bg-white">
+                        <button className="inline-flex items-center gap-1.5 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-950 transition hover:bg-white" aria-label="Create new task">
                             <Plus size={14} /> Create
                         </button>
                     </form>
@@ -99,14 +100,16 @@ export function WorkspaceHeader({
                             value={search}
                             onChange={(event) => onSearchChange(event.target.value)}
                             placeholder="Search..."
-                            className="w-44 border border-zinc-800 bg-zinc-950 py-2 pl-8 pr-3 text-sm text-zinc-100 outline-none transition focus:border-zinc-600"
+                            aria-label="Search tasks"
+                            className="w-44 border border-zinc-800 bg-zinc-900/40 backdrop-blur-md py-2 pl-8 pr-3 text-sm text-zinc-100 outline-none transition focus:border-zinc-600"
                         />
                     </div>
 
                     <select
                         value={statusFilter}
                         onChange={(event) => onStatusFilterChange(event.target.value as "all" | Task["status"])}
-                        className="border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none"
+                        aria-label="Filter by status"
+                        className="border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none"
                     >
                         <option value="all">All statuses</option>
                         <option value="todo">To Do</option>
@@ -117,7 +120,8 @@ export function WorkspaceHeader({
                     <select
                         value={operationalFilter}
                         onChange={(event) => onOperationalFilterChange(event.target.value as "all" | "ready" | "blocked" | "active")}
-                        className="border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none"
+                        aria-label="Filter by flow state"
+                        className="border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none"
                     >
                         <option value="all">All flow states</option>
                         <option value="ready">Ready</option>
@@ -125,7 +129,7 @@ export function WorkspaceHeader({
                         <option value="active">Active</option>
                     </select>
 
-                    <label className="flex items-center gap-2 border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                    <label className="flex items-center gap-2 border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-300">
                         <input type="checkbox" checked={hideDone} onChange={(event) => onHideDoneChange(event.target.checked)} />
                         Hide done
                     </label>
@@ -135,7 +139,8 @@ export function WorkspaceHeader({
                     <select
                         value={dependencyType}
                         onChange={(event) => onDependencyTypeChange(event.target.value as DependencyType)}
-                        className="border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none"
+                        aria-label="Dependency type"
+                        className="border border-zinc-800 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm text-zinc-100 outline-none"
                     >
                         {DEPENDENCY_TYPES.map((type) => (
                             <option key={type} value={type}>
@@ -147,7 +152,7 @@ export function WorkspaceHeader({
                     <button
                         type="button"
                         onClick={onAutoArrange}
-                        className="border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-600 hover:bg-zinc-900"
+                        className="border border-zinc-700 bg-zinc-900/40 backdrop-blur-md px-3 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-600 hover:bg-zinc-900"
                     >
                         Auto Arrange
                     </button>

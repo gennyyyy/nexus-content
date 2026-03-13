@@ -21,6 +21,8 @@ import {
 } from "./constants";
 import { buildEdges, buildNodes, computeAutoLayout, edgeId, getFlowBadge, normalizePriority, sortTasks } from "./utils";
 import type { InspectorDraft, PositionMap, TaskBuckets, WorkspaceCounts, WorkspaceMode } from "./types";
+import { useToast } from "../../components/ToastProvider";
+import { useSearchParams } from "react-router-dom";
 
 const DEFAULT_INSPECTOR_DRAFT: InspectorDraft = {
     title: "",
@@ -30,6 +32,9 @@ const DEFAULT_INSPECTOR_DRAFT: InspectorDraft = {
 };
 
 export function useWorkspaceController() {
+    const { toast } = useToast();
+    const [searchParams] = useSearchParams();
+    const projectId = searchParams.get("project");
     const [tasks, setTasks] = useState<Task[]>([]);
     const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
     const [memoryByTask, setMemoryByTask] = useState<Map<number, TaskMemorySummary>>(new Map());
@@ -93,7 +98,7 @@ export function useWorkspaceController() {
     const loadWorkspace = useCallback(async (selectedId?: number) => {
         setLoading(true);
         try {
-            const snapshot = await fetchWorkspaceSnapshot();
+            const snapshot = await fetchWorkspaceSnapshot(projectId);
             const nextMemory = new Map(snapshot.memory.map((item) => [item.task_id, item] as const));
             const nextOperational = new Map(snapshot.task_states.map((item) => [item.task_id, item] as const));
 
@@ -153,8 +158,10 @@ export function useWorkspaceController() {
             });
             setNewTaskTitle("");
             await loadWorkspace(created.id);
+            toast(`Task "${created.title}" created`, "success");
         } catch (error) {
             console.error(error);
+            toast("Failed to create task", "error");
         }
     }, [loadWorkspace, newTaskTitle]);
 
@@ -165,6 +172,7 @@ export function useWorkspaceController() {
             await loadWorkspace(selectedTask.id);
         } catch (error) {
             console.error(error);
+            toast("Failed to update status", "error");
         }
     }, [loadWorkspace, selectedTask]);
 
@@ -179,8 +187,10 @@ export function useWorkspaceController() {
                 labels: inspectorDraft.labels.trim(),
             });
             await loadWorkspace(selectedTask.id);
+            toast("Task details saved", "success");
         } catch (error) {
             console.error(error);
+            toast("Failed to save task details", "error");
         }
     }, [inspectorDraft.description, inspectorDraft.labels, inspectorDraft.priority, inspectorDraft.title, loadWorkspace, selectedTask]);
 
@@ -199,8 +209,10 @@ export function useWorkspaceController() {
             });
             setContextTask((current) => (current?.id === selectedTaskId ? null : current));
             await loadWorkspace();
+            toast("Task deleted", "success");
         } catch (error) {
             console.error(error);
+            toast("Failed to delete task", "error");
         }
     }, [loadWorkspace, selectedTask]);
 
@@ -213,8 +225,10 @@ export function useWorkspaceController() {
             await deleteDependency(dependency.id);
             setSelectedEdgeId(null);
             await loadWorkspace(selectedTask?.id);
+            toast("Dependency removed", "success");
         } catch (error) {
             console.error(error);
+            toast("Failed to delete dependency", "error");
         }
     }, [dependencies, loadWorkspace, selectedEdgeId, selectedTask]);
 
@@ -231,8 +245,10 @@ export function useWorkspaceController() {
                 target_handle: connection.targetHandle ?? undefined,
             });
             await loadWorkspace(selectedTask?.id ?? created.source_task_id);
+            toast(`Dependency "${dependencyType}" created`, "success");
         } catch (error) {
             console.error(error);
+            toast("Failed to create dependency", "error");
         } finally {
             setSavingEdge(false);
         }

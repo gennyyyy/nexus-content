@@ -1,6 +1,6 @@
 import { MarkerType, type Edge, type Node } from "@xyflow/react";
 import type { Task, TaskDependency, TaskMemorySummary, TaskOperationalState } from "../../lib/api";
-import { FLOW_BADGES, PRIORITY_BADGES, STATUS_META } from "./constants";
+import { DEPENDENCY_META, FLOW_BADGES, PRIORITY_BADGES, STATUS_META } from "./constants";
 import type { FlowBadge, PositionMap } from "./types";
 
 export function getFlowBadge(task: Task, state?: TaskOperationalState): FlowBadge {
@@ -48,46 +48,71 @@ export function buildNodes(
     positions: PositionMap,
 ): Node[] {
     return tasks.map((task, index) => {
-        const flow = task.id ? getFlowBadge(task, state.get(task.id)) : null;
+        const operationalState = task.id ? state.get(task.id) : undefined;
+        const flow = task.id ? getFlowBadge(task, operationalState) : null;
+        const priority = normalizePriority(task.priority);
+        const statusMeta = STATUS_META[task.status];
 
         return {
             id: String(task.id),
             type: "taskCard",
             position: positions[String(task.id)] ?? {
-                x: (index % 4) * 280 + 48,
-                y: Math.floor(index / 4) * 164 + 48,
+                x: (index % 4) * 304 + 48,
+                y: Math.floor(index / 4) * 212 + 48,
             },
             data: {
                 title: task.title,
                 taskId: task.id,
-                statusLabel: STATUS_META[task.status].label,
+                statusLabel: statusMeta.label,
+                statusColor: statusMeta.color,
                 summary: taskSummary(task, task.id ? memory.get(task.id) : undefined),
                 nextStep: nextStep(task.id ? memory.get(task.id) : undefined),
-                badgeClass: STATUS_META[task.status].badge,
+                badgeClass: statusMeta.badge,
                 operationalLabel: flow?.[0],
                 operationalClass: flow?.[1],
+                priorityLabel: priority.charAt(0).toUpperCase() + priority.slice(1),
+                priorityClass: PRIORITY_BADGES[priority],
+                blockerCount: operationalState?.blocked_by_open_count || 0,
+                downstreamCount: operationalState?.blocks_open_count || 0,
+                isHot: priority === "critical" || (operationalState?.blocked_by_open_count || 0) >= 2,
             },
         };
     });
 }
 
 export function buildEdges(dependencies: TaskDependency[]): Edge[] {
-    return dependencies.map((dependency) => ({
-        id: edgeId(dependency),
-        source: String(dependency.source_task_id),
-        target: String(dependency.target_task_id),
-        sourceHandle: dependency.source_handle ?? undefined,
-        targetHandle: dependency.target_handle ?? undefined,
-        type: "step",
-        label: dependency.type,
-        labelStyle: { fill: "#d4d4d8", fontWeight: 700 },
-        labelBgStyle: { fill: "#09090b", fillOpacity: 1 },
-        labelBgPadding: [8, 4],
-        labelBgBorderRadius: 4,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: "#8dd3ff" },
-        style: { stroke: "#8dd3ff", strokeWidth: 2.2 },
-        interactionWidth: 28,
-    }));
+    return dependencies.map((dependency) => {
+        const meta = DEPENDENCY_META[dependency.type as keyof typeof DEPENDENCY_META] ?? {
+            stroke: "#8dd3ff",
+            badge: "border-sky-500/30 bg-sky-500/10 text-sky-200",
+            labelBg: "#082f49",
+            labelText: "#dbeafe",
+            animated: false,
+            dashed: false,
+        };
+
+        return {
+            id: edgeId(dependency),
+            source: String(dependency.source_task_id),
+            target: String(dependency.target_task_id),
+            sourceHandle: dependency.source_handle ?? undefined,
+            targetHandle: dependency.target_handle ?? undefined,
+            type: "smoothstep",
+            label: dependency.type,
+            labelStyle: { fill: meta.labelText, fontWeight: 700, fontSize: 11 },
+            labelBgStyle: { fill: meta.labelBg, fillOpacity: 0.96, stroke: meta.stroke, strokeOpacity: 0.18 },
+            labelBgPadding: [10, 5],
+            labelBgBorderRadius: 999,
+            markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: meta.stroke },
+            style: {
+                stroke: meta.stroke,
+                strokeWidth: dependency.type === "relates_to" ? 1.9 : 2.4,
+                strokeDasharray: meta.dashed ? "6 5" : undefined,
+            },
+            animated: meta.animated,
+            interactionWidth: 32,
+        };
+    });
 }
 
 export function computeAutoLayout(tasks: Task[], dependencies: TaskDependency[]): PositionMap {
@@ -131,7 +156,7 @@ export function computeAutoLayout(tasks: Task[], dependencies: TaskDependency[])
         .sort((a, b) => a - b)
         .forEach((level) => {
             sortTasks(columns.get(level) || []).forEach((task, row) => {
-                positions[String(task.id)] = { x: level * 280 + 48, y: row * 164 + 48 };
+                positions[String(task.id)] = { x: level * 304 + 48, y: row * 212 + 48 };
             });
         });
 

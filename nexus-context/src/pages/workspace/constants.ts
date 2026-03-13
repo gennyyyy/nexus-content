@@ -35,6 +35,41 @@ export const FLOW_BADGES = {
     active: "border-blue-500/30 bg-blue-500/10 text-blue-200",
 } as const;
 
+export const DEPENDENCY_META = {
+    blocks: {
+        stroke: "#fb7185",
+        badge: "border-rose-500/30 bg-rose-500/10 text-rose-200",
+        labelBg: "#2d0a12",
+        labelText: "#fecdd3",
+        animated: false,
+        dashed: false,
+    },
+    requires: {
+        stroke: "#a78bfa",
+        badge: "border-violet-500/30 bg-violet-500/10 text-violet-200",
+        labelBg: "#22133b",
+        labelText: "#ddd6fe",
+        animated: false,
+        dashed: false,
+    },
+    relates_to: {
+        stroke: "#94a3b8",
+        badge: "border-slate-500/30 bg-slate-500/10 text-slate-200",
+        labelBg: "#111827",
+        labelText: "#cbd5e1",
+        animated: false,
+        dashed: true,
+    },
+    unlocks: {
+        stroke: "#34d399",
+        badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+        labelBg: "#052e25",
+        labelText: "#a7f3d0",
+        animated: true,
+        dashed: false,
+    },
+} as const;
+
 export const BOARD_COLUMNS = [
     { id: "todo", title: "To Do", description: "Plan upcoming work." },
     { id: "in_progress", title: "In Progress", description: "Keep active execution visible." },

@@ -55,6 +55,8 @@ class ContextEntry(SQLModel, table=True):
     decisions: Optional[str] = None
     open_questions: Optional[str] = None
     next_step: Optional[str] = None
+    actor: str = Field(default="System")
+    source: str = Field(default="system")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
     task: "Task" = Relationship(back_populates="context_entries")

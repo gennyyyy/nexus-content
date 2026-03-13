@@ -38,6 +38,8 @@ export interface ContextEntry {
     decisions?: string;
     open_questions?: string;
     next_step?: string;
+    actor?: string;
+    source?: string;
     timestamp?: string;
 }
 

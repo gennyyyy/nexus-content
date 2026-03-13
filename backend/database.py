@@ -15,6 +15,8 @@ CONTEXT_ENTRY_MIGRATIONS = {
     "decisions": "ALTER TABLE contextentry ADD COLUMN decisions VARCHAR",
     "open_questions": "ALTER TABLE contextentry ADD COLUMN open_questions VARCHAR",
     "next_step": "ALTER TABLE contextentry ADD COLUMN next_step VARCHAR",
+    "actor": "ALTER TABLE contextentry ADD COLUMN actor VARCHAR DEFAULT 'System'",
+    "source": "ALTER TABLE contextentry ADD COLUMN source VARCHAR DEFAULT 'system'",
 }
 
 TASK_MIGRATIONS = {

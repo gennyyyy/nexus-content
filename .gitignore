@@ -9,6 +9,10 @@ backend/database.db
 nexus-context/node_modules/
 nexus-context/dist/
 nexus-context/.env
+discord-bot/node_modules/
+discord-bot/dist/
+discord-bot/.env
+discord-bot/data/channel-project-map.json
 
 # IDE / System
 .vscode/

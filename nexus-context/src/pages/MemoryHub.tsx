@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Brain, CircleHelp, FileCode2, Flag, StepForward, RefreshCw, Inbox } from "lucide-react";
 import { fetchMemoryOverview, fetchTasks, type Task, type TaskMemorySummary } from "../lib/api";
 import { TaskContextModal } from "../components/TaskContextModal";
+import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import { useParams } from "react-router-dom";
 
 const STATUS_LABEL: Record<Task["status"], string> = {
@@ -150,7 +151,11 @@ function Section({ icon, title, text }: SectionProps) {
             <div className="mb-0.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
                 {icon} {title}
             </div>
-            <p className="text-sm leading-relaxed text-zinc-300">{text}</p>
+            {text === "No summary yet." || text === "No next step yet." ? (
+                <p className="text-sm leading-relaxed text-zinc-400">{text}</p>
+            ) : (
+                <MarkdownRenderer content={text} />
+            )}
         </div>
     );
 }

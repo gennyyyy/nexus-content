@@ -6,6 +6,7 @@ import {
     CheckCircle2,
     Clock3,
     FileCode2,
+    FileText,
     Flag,
     GitBranch,
     ListChecks,
@@ -256,7 +257,11 @@ export function ControlCenter() {
                                 {controlCenter.activity.length > 0 ? (
                                     <div className="space-y-3">
                                         {controlCenter.activity.map((event) => (
-                                            <TimelineRow key={event.id} event={event} />
+                                            <TimelineRow 
+                                                key={event.id} 
+                                                event={event} 
+                                                onOpenContext={event.task_id ? () => controlCenter.openContextTask({ id: event.task_id!, title: event.task_title || "Unknown Task" } as any) : undefined}
+                                            />
                                         ))}
                                     </div>
                                 ) : (
@@ -616,12 +621,23 @@ function DispatchPanel({
     );
 }
 
-function TimelineRow({ event }: { event: ActivityEvent }) {
+function TimelineRow({ event, onOpenContext }: { event: ActivityEvent; onOpenContext?: () => void }) {
+    const isClickable = !!onOpenContext;
+
     return (
-        <article className="rounded-[24px] border border-zinc-800/80 bg-black/20 p-4">
+        <article 
+            onClick={onOpenContext}
+            className={cn(
+                "rounded-[24px] border border-zinc-800/80 bg-black/20 p-4 transition-all duration-200 group",
+                isClickable ? "cursor-pointer hover:border-zinc-600 hover:bg-zinc-900/40 active:scale-[0.99]" : "opacity-90"
+            )}
+        >
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <div className="text-base font-semibold text-white">{event.title}</div>
+                    <div className="flex items-center gap-2">
+                        <div className="text-base font-semibold text-white">{event.title}</div>
+                        {isClickable && <ArrowRight size={14} className="text-zinc-600 transition-colors group-hover:text-sky-400" />}
+                    </div>
                     <div className="mt-1 text-sm leading-relaxed text-zinc-400">{event.summary}</div>
                 </div>
 
@@ -634,7 +650,12 @@ function TimelineRow({ event }: { event: ActivityEvent }) {
             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.18em] text-zinc-500">
                 <span>{formatTimestamp(event.created_at)}</span>
                 <span>{formatRelativeTime(event.created_at)}</span>
-                {event.task_title ? <span className="text-zinc-400">Task: {event.task_title}</span> : null}
+                {event.task_title ? (
+                    <span className="inline-flex items-center gap-1.5 text-sky-400/80">
+                        <FileText size={12} />
+                        Task: {event.task_title}
+                    </span>
+                ) : null}
             </div>
         </article>
     );

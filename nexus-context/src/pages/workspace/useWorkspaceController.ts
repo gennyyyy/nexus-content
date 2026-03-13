@@ -20,9 +20,9 @@ import {
     type DependencyType,
 } from "./constants";
 import { buildEdges, buildNodes, computeAutoLayout, edgeId, getFlowBadge, normalizePriority, sortTasks } from "./utils";
-import type { InspectorDraft, PositionMap, TaskBuckets, WorkspaceCounts, WorkspaceMode } from "./types";
+import type { PositionMap, TaskBuckets, WorkspaceCounts, WorkspaceMode } from "./types";
 import { useToast } from "../../components/ToastProvider";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 
 const DEFAULT_INSPECTOR_DRAFT: InspectorDraft = {
     title: "",
@@ -34,6 +34,7 @@ const DEFAULT_INSPECTOR_DRAFT: InspectorDraft = {
 export function useWorkspaceController() {
     const { toast } = useToast();
     const { projectId } = useParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
     const [memoryByTask, setMemoryByTask] = useState<Map<number, TaskMemorySummary>>(new Map());
@@ -108,12 +109,24 @@ export function useWorkspaceController() {
             setNodes(buildNodes(snapshot.tasks, nextMemory, nextOperational, nodePositionsRef.current));
             setEdges(buildEdges(snapshot.dependencies));
 
-            const activeTaskId = selectedId ?? selectedTaskIdRef.current;
+            const urlTaskId = searchParams.get("taskId");
+            const activeTaskId = urlTaskId ? Number(urlTaskId) : (selectedId ?? selectedTaskIdRef.current);
             const nextSelectedTask = activeTaskId
                 ? snapshot.tasks.find((task) => task.id === activeTaskId) ?? null
                 : null;
 
             setSelectedTask(nextSelectedTask);
+
+            // Clear taskId from URL to avoid re-selecting on manual refresh if needed, 
+            // but keep it if we want it to be bookmarkable. 
+            // Let's clear it for now to treat it as a "jump to" action.
+            if (urlTaskId) {
+                setSearchParams((prev) => {
+                    prev.delete("taskId");
+                    return prev;
+                }, { replace: true });
+            }
+
             setSelectedEdgeId((current) =>
                 current && snapshot.dependencies.some((dependency) => edgeId(dependency) === current) ? current : null,
             );
@@ -167,26 +180,42 @@ export function useWorkspaceController() {
 
     const handleStatusChange = useCallback(async (status: Task["status"]) => {
         if (!selectedTask?.id) return;
+        const taskId = selectedTask.id;
+
+        // Optimistic update
+        setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, status } : t)));
+        setSelectedTask((current) => (current?.id === taskId ? { ...current, status } : current));
+        setNodes((current) =>
+            current.map((node) =>
+                node.id === String(taskId)
+                    ? { ...node, data: { ...node.data, task: { ...node.data.task, status } } }
+                    : node,
+            ),
+        );
+
         try {
-            await updateTask(selectedTask.id, { status });
-            await loadWorkspace(selectedTask.id);
+            await updateTask(taskId, { status });
+            // Refresh to sync any server-side side effects (like operational state)
+            void loadWorkspace(taskId);
         } catch (error) {
             console.error(error);
             toast("Failed to update status", "error");
+            void loadWorkspace(taskId); // Rollback
         }
-    }, [loadWorkspace, selectedTask]);
+    }, [loadWorkspace, selectedTask, setNodes, toast]);
 
     const handleSaveTaskDetails = useCallback(async () => {
         if (!selectedTask?.id || !inspectorDraft.title.trim()) return;
+        const taskId = selectedTask.id;
 
         try {
-            await updateTask(selectedTask.id, {
+            await updateTask(taskId, {
                 title: inspectorDraft.title.trim(),
                 description: inspectorDraft.description.trim(),
                 priority: normalizePriority(inspectorDraft.priority),
                 labels: inspectorDraft.labels.trim(),
             });
-            await loadWorkspace(selectedTask.id);
+            await loadWorkspace(taskId);
             toast("Task details saved", "success");
         } catch (error) {
             console.error(error);
@@ -198,23 +227,29 @@ export function useWorkspaceController() {
         if (!selectedTask?.id) return;
         const selectedTaskId = selectedTask.id;
 
+        // Optimistic update
+        setTasks((current) => current.filter((t) => t.id !== selectedTaskId));
+        setNodes((current) => current.filter((node) => node.id !== String(selectedTaskId)));
+        setEdges((current) => current.filter((edge) => edge.source !== String(selectedTaskId) && edge.target !== String(selectedTaskId)));
+        setSelectedTask(null);
+        setSelectedEdgeId(null);
+
         try {
             await deleteTask(selectedTaskId);
-            setSelectedTask(null);
-            setSelectedEdgeId(null);
             setNodePositions((current) => {
                 const next = { ...current };
                 delete next[String(selectedTaskId)];
                 return next;
             });
             setContextTask((current) => (current?.id === selectedTaskId ? null : current));
-            await loadWorkspace();
             toast("Task deleted", "success");
+            // No need to loadWorkspace here as we've manually cleaned up
         } catch (error) {
             console.error(error);
             toast("Failed to delete task", "error");
+            void loadWorkspace(); // Rollback
         }
-    }, [loadWorkspace, selectedTask]);
+    }, [loadWorkspace, selectedTask, setEdges, setNodes, toast]);
 
     const handleDeleteSelectedEdge = useCallback(async () => {
         if (!selectedEdgeId) return;

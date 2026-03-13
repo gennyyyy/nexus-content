@@ -217,7 +217,12 @@ async def add_context(task_id: int, content: str) -> str:
         if not task:
             return f"Error: Task {task_id} not found."
             
-        entry = ContextEntry(task_id=task_id, content=content)
+        entry = ContextEntry(
+            task_id=task_id,
+            content=content,
+            actor="MCP agent",
+            source="mcp",
+        )
         session.add(entry)
         session.flush()
         record_activity(
@@ -277,6 +282,8 @@ async def add_memory_handoff(
             decisions=decisions or None,
             open_questions=open_questions or None,
             next_step=next_step or None,
+            actor="MCP agent",
+            source="mcp",
         )
         session.add(entry)
         session.flush()

@@ -10,6 +10,7 @@ import {
     type Task,
     type TaskMemorySummary,
 } from "../lib/api";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Props {
     task: Task | null;
@@ -191,11 +192,11 @@ export function TaskContextModal({ task, onClose }: Props) {
                             <div className="space-y-3">
                                 <div>
                                     <div className="text-[11px] uppercase tracking-[0.24em] text-blue-400 mb-0.5">Latest Summary</div>
-                                    <p className="text-sm text-zinc-200 leading-relaxed">{memory.latest_summary || "No handoff saved yet."}</p>
+                                    {memory.latest_summary ? <MarkdownRenderer content={memory.latest_summary} /> : <p className="text-sm text-zinc-400 leading-relaxed">No handoff saved yet.</p>}
                                 </div>
                                 <div>
                                     <div className="text-[11px] uppercase tracking-[0.24em] text-emerald-400 mb-0.5">Next Step</div>
-                                    <p className="text-sm text-zinc-300 leading-relaxed">{memory.latest_next_step || "No next step captured yet."}</p>
+                                    {memory.latest_next_step ? <MarkdownRenderer content={memory.latest_next_step} /> : <p className="text-sm text-zinc-400 leading-relaxed">No next step captured yet.</p>}
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
                                     <MemoryList title="Recent Files" icon={<GitBranch size={14} className="text-zinc-400" />} items={memory.recent_files} empty="No files tracked yet." />
@@ -224,7 +225,7 @@ export function TaskContextModal({ task, onClose }: Props) {
                                 </div>
                                 <div>
                                     <div className="text-[11px] uppercase tracking-[0.24em] text-emerald-400 mb-0.5">Agent Brief</div>
-                                    <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{resumePacket.agent_brief}</p>
+                                    <MarkdownRenderer content={resumePacket.agent_brief} />
                                 </div>
                                 <div>
                                     <div className="mb-1.5 flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-zinc-400">
@@ -321,56 +322,90 @@ export function TaskContextModal({ task, onClose }: Props) {
                         </div>
                     ) : (
                         <div className="relative border-l-2 border-zinc-800 ml-3 space-y-6 pb-10">
-                            {entries.map((entry, idx) => {
-                                const date = new Date(entry.timestamp!);
-                                return (
-                                    <div key={idx} className="relative pl-5 group">
-                                        <div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-[7px] top-1.5 ring-4 ring-zinc-950 group-hover:scale-125 transition-transform" />
-                                        <div className="text-[11px] font-semibold text-zinc-500 tracking-wider mb-1 uppercase">
-                                            {date.toLocaleDateString()} at {date.toLocaleTimeString()}
-                                        </div>
-                                        <div className="mb-1.5 inline-flex border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                                            {entry.entry_type || "note"}
-                                        </div>
-                                        <div className="bg-zinc-900/60 border border-zinc-800/80 p-3 text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed space-y-2">
+                            {[...entries]
+                                .sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime())
+                                .map((entry, idx) => {
+                                    const date = new Date(entry.timestamp!);
+                                    const isLatest = idx === 0;
+                                    const isAgent = entry.source === "mcp";
+
+                                    return (
+                                        <div key={idx} className={cn("relative pl-5 group transition-all", isLatest && "scale-[1.01]")}>
+                                            <div className={cn(
+                                                "absolute w-3 h-3 rounded-full -left-[7px] top-1.5 ring-4 ring-zinc-950 group-hover:scale-125 transition-transform",
+                                                isLatest ? "bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]" : "bg-zinc-700"
+                                            )} />
+
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <div className="text-[11px] font-semibold text-zinc-500 tracking-wider uppercase">
+                                                    {date.toLocaleDateString()} at {date.toLocaleTimeString()}
+                                                </div>
+                                                {isLatest && (
+                                                    <span className="bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 border border-blue-500/20">
+                                                        Latest Update
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                <div className={cn(
+                                                    "inline-flex border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]",
+                                                    entry.entry_type === "handoff" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-zinc-700 bg-zinc-900 text-zinc-400"
+                                                )}>
+                                                    {entry.entry_type || "note"}
+                                                </div>
+
+                                                <div className={cn(
+                                                    "inline-flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em]",
+                                                    isAgent ? "border-blue-500/30 bg-blue-500/10 text-blue-400" : "border-zinc-700 bg-zinc-800 text-zinc-300"
+                                                )}>
+                                                    {isAgent ? <Brain size={10} /> : <AlignLeft size={10} />}
+                                                    {entry.actor || "System"}
+                                                </div>
+                                            </div>
+
+                                            <div className={cn(
+                                                "bg-zinc-900/60 border p-3 text-sm text-zinc-300 space-y-3 transition-colors",
+                                                isLatest ? "border-blue-500/30 bg-blue-900/5" : "border-zinc-800/80"
+                                            )}>
                                             {entry.summary && (
                                                 <div>
                                                     <div className="text-[10px] uppercase tracking-[0.2em] text-blue-400 mb-0.5">Summary</div>
-                                                    <p>{entry.summary}</p>
+                                                    <MarkdownRenderer content={entry.summary} />
                                                 </div>
                                             )}
                                             {entry.what_changed && (
                                                 <div>
                                                     <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-0.5">What Changed</div>
-                                                    <p>{entry.what_changed}</p>
+                                                    <MarkdownRenderer content={entry.what_changed} />
                                                 </div>
                                             )}
                                             {entry.files_touched && (
                                                 <div>
                                                     <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-0.5">Files</div>
-                                                    <p>{entry.files_touched}</p>
+                                                    <MarkdownRenderer content={entry.files_touched} />
                                                 </div>
                                             )}
                                             {entry.decisions && (
                                                 <div>
                                                     <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-0.5">Decisions</div>
-                                                    <p>{entry.decisions}</p>
+                                                    <MarkdownRenderer content={entry.decisions} />
                                                 </div>
                                             )}
                                             {entry.open_questions && (
                                                 <div>
                                                     <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-0.5">Open Questions</div>
-                                                    <p>{entry.open_questions}</p>
+                                                    <MarkdownRenderer content={entry.open_questions} />
                                                 </div>
                                             )}
                                             {entry.next_step && (
                                                 <div>
                                                     <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-400 mb-0.5">Next Step</div>
-                                                    <p>{entry.next_step}</p>
+                                                    <MarkdownRenderer content={entry.next_step} />
                                                 </div>
                                             )}
                                             {!entry.summary && !entry.what_changed && !entry.decisions && !entry.open_questions && !entry.next_step && (
-                                                <p>{entry.content}</p>
+                                                <MarkdownRenderer content={entry.content} />
                                             )}
                                         </div>
                                     </div>

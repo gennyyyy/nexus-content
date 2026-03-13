@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import type { FormEvent, RefObject } from "react";
 import { Filter, LayoutDashboard, Network, Plus } from "lucide-react";
 import type { Task } from "../../lib/api";
 import { DEPENDENCY_TYPES, type DependencyType } from "./constants";
@@ -22,6 +22,8 @@ interface Props {
     onSearchChange: (value: string) => void;
     onDependencyTypeChange: (value: DependencyType) => void;
     onAutoArrange: () => void;
+    newTaskInputRef?: RefObject<HTMLInputElement | null>;
+    searchInputRef?: RefObject<HTMLInputElement | null>;
 }
 
 export function WorkspaceHeader({
@@ -42,6 +44,8 @@ export function WorkspaceHeader({
     onSearchChange,
     onDependencyTypeChange,
     onAutoArrange,
+    newTaskInputRef,
+    searchInputRef,
 }: Props) {
     return (
         <header className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
@@ -81,6 +85,7 @@ export function WorkspaceHeader({
                 <div className="flex flex-wrap items-center gap-2">
                     <form onSubmit={onCreateTask} className="flex items-center gap-2">
                         <input
+                            ref={newTaskInputRef}
                             value={newTaskTitle}
                             onChange={(event) => onNewTaskTitleChange(event.target.value)}
                             placeholder="Create a new task..."
@@ -97,6 +102,7 @@ export function WorkspaceHeader({
                     <div className="relative">
                         <Filter size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                         <input
+                            ref={searchInputRef}
                             value={search}
                             onChange={(event) => onSearchChange(event.target.value)}
                             placeholder="Search..."

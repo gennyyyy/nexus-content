@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { fetchProjects, createProject, type Project } from "../lib/api";
 
 export function ProjectSelector() {
@@ -8,7 +8,6 @@ export function ProjectSelector() {
     const [isCreating, setIsCreating] = useState(false);
     const [newProjectName, setNewProjectName] = useState("");
     const [newProjectId, setNewProjectId] = useState("");
-    const navigate = useNavigate();
 
     useEffect(() => {
         loadProjects();

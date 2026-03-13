@@ -359,6 +359,8 @@ def create_task_context(task_id: int, entry: ContextEntryCreate, session: Sessio
         decisions=entry.decisions,
         open_questions=entry.open_questions,
         next_step=entry.next_step,
+        actor="Web operator",
+        source="web",
     )
     session.add(db_entry)
     session.flush()

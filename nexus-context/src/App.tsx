@@ -6,12 +6,14 @@ import { Workspace } from "./pages/Workspace";
 import { MemoryHub } from "./pages/MemoryHub";
 import { ControlCenter } from "./pages/ControlCenter";
 import { ProjectSelector } from "./pages/ProjectSelector";
+import { CommandPalette } from "./components/CommandPalette";
 
 export default function App() {
     return (
         <ErrorBoundary>
             <ToastProvider>
                 <BrowserRouter>
+                    <CommandPalette />
                     <Routes>
                         <Route path="/" element={<Navigate to="/projects" replace />} />
                         <Route path="/projects" element={<ProjectSelector />} />

@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import "@xyflow/react/dist/style.css";
 import { TaskContextModal } from "../components/TaskContextModal";
 import { AdvancedWorkspaceView } from "./workspace/AdvancedWorkspaceView";
@@ -7,6 +8,28 @@ import { useWorkspaceController } from "./workspace/useWorkspaceController";
 
 export function Workspace() {
     const workspace = useWorkspaceController();
+    const newTaskInputRef = useRef<HTMLInputElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Only trigger if not typing in an input/textarea
+            const isTyping = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName);
+
+            if (!isTyping) {
+                if (e.key === "/") {
+                    e.preventDefault();
+                    searchInputRef.current?.focus();
+                } else if (e.key.toLowerCase() === "n") {
+                    e.preventDefault();
+                    newTaskInputRef.current?.focus();
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     return (
         <div className="flex h-full min-h-0 flex-col">
@@ -28,6 +51,8 @@ export function Workspace() {
                 onSearchChange={workspace.setSearch}
                 onDependencyTypeChange={workspace.setDependencyType}
                 onAutoArrange={workspace.handleAutoArrange}
+                newTaskInputRef={newTaskInputRef}
+                searchInputRef={searchInputRef}
             />
 
             <div className="mx-auto flex min-h-0 w-full max-w-[1800px] flex-1 overflow-hidden px-5 py-5 sm:px-6 lg:px-8">

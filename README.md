@@ -10,6 +10,7 @@ Nexus Context is a self-hosted platform designed to provide long-term context fo
 - **Dependency Graph**: Visual node-based mapping of task relationships using React Flow.
 - **Context Logs**: Sequential feed of AI-generated progress logs for every task.
 - **MCP Server**: Integrated SSE endpoint for seamless AI agent integration.
+- **Discord Assistant Bridge**: TypeScript bot that binds channels to projects and answers using live project context.
 
 ## Getting Started
 
@@ -37,6 +38,16 @@ npm run dev
 
 The web app now opens on the **Control Center** by default. The task workspace remains available at `/workspace`, and the memory view remains available at `/memory`.
 
+### Step 3: Discord Bot Setup (Optional)
+```bash
+cd discord-bot
+npm install
+cp .env.example .env
+# Fill DISCORD_BOT_TOKEN and optional assistant settings
+npm run dev
+```
+*The bot connects to your Discord server and uses the backend API on `http://localhost:8000/api` by default.*
+
 ## Running as an MCP Server
 Point your MCP client (like Claude Desktop or MCP Inspector) to:
 - **SSE URL**: `http://localhost:8000/mcp/sse`
@@ -45,6 +56,7 @@ Point your MCP client (like Claude Desktop or MCP Inspector) to:
 ## Documentation
 - [Implementation Plan](Plan.md) - Technical overview for AI agents.
 - [Database Models](backend/models.py) - SQLite schema definitions.
+- [Discord Bot Guide](discord-bot/README.md) - Architecture and command reference for channel/project assistant flows.
 
 ## License
 MIT

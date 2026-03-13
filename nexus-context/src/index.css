@@ -125,7 +125,7 @@
   }
 
   .surface-panel {
-    @apply border border-white/5 bg-zinc-900/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0, 0, 0, 0.4)];
+    @apply border border-white/5 bg-zinc-900/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)];
   }
 
   /* Global micro-interaction transitions */
@@ -135,12 +135,12 @@
 
   .nexus-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.24) transparent;
+    scrollbar-color: rgba(63, 63, 70, 0.5) transparent;
   }
 
   .nexus-scroll::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   .nexus-scroll::-webkit-scrollbar-track {
@@ -148,8 +148,8 @@
   }
 
   .nexus-scroll::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.22);
-    border: 2px solid transparent;
+    @apply bg-zinc-700/50 rounded-full hover:bg-zinc-600;
+    border: 1px solid transparent;
     background-clip: padding-box;
   }
 

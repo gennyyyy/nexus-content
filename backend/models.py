@@ -17,6 +17,19 @@ class TaskDependency(SQLModel, table=True):
     target_handle: Optional[str] = None
 
 
+class Project(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    name: str
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProjectCreate(SQLModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+
+
 class ActivityEvent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     event_type: str
@@ -28,6 +41,7 @@ class ActivityEvent(SQLModel, table=True):
     summary: str
     actor: str = Field(default="System")
     source: str = Field(default="system")
+    project_id: Optional[str] = Field(default=None, foreign_key="project.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ContextEntry(SQLModel, table=True):
@@ -61,7 +75,7 @@ class TaskCreate(SQLModel):
     status: TaskStatus = TaskStatus.TODO
     priority: str = "medium"
     labels: Optional[str] = None
-    project_id: Optional[str] = None
+    project_id: str
 
 class TaskUpdate(SQLModel):
     title: Optional[str] = None
@@ -69,7 +83,6 @@ class TaskUpdate(SQLModel):
     status: Optional[TaskStatus] = None
     priority: Optional[str] = None
     labels: Optional[str] = None
-    project_id: Optional[str] = None
 
 class TaskMemorySummary(SQLModel):
     task_id: int
@@ -193,7 +206,7 @@ class Task(SQLModel, table=True):
     status: TaskStatus = Field(default=TaskStatus.TODO)
     priority: str = Field(default="medium")
     labels: Optional[str] = None
-    project_id: Optional[str] = None
+    project_id: Optional[str] = Field(default=None, foreign_key="project.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     context_entries: List[ContextEntry] = Relationship(back_populates="task")

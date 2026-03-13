@@ -1,5 +1,12 @@
 export const API_BASE = "http://127.0.0.1:8000/api";
 
+export interface Project {
+    id: string;
+    name: string;
+    description?: string;
+    created_at?: string;
+}
+
 export interface Task {
     id?: number;
     title: string;
@@ -239,9 +246,25 @@ export async function fetchTaskResumePacket(taskId: number): Promise<ResumePacke
     return res.json();
 }
 
-export async function fetchProjects(): Promise<string[]> {
+export async function fetchProjects(): Promise<Project[]> {
     const res = await fetch(`${API_BASE}/projects`);
     if (!res.ok) throw new Error("Failed to fetch projects");
+    return res.json();
+}
+
+export async function createProject(project: Partial<Project>): Promise<Project> {
+    const res = await fetch(`${API_BASE}/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(project),
+    });
+    if (!res.ok) throw new Error("Failed to create project");
+    return res.json();
+}
+
+export async function fetchProject(projectId: string): Promise<Project> {
+    const res = await fetch(`${API_BASE}/projects/${projectId}`);
+    if (!res.ok) throw new Error("Failed to fetch project");
     return res.json();
 }
 
@@ -266,8 +289,11 @@ export async function fetchControlCenterSnapshot(projectId?: string | null): Pro
     return res.json();
 }
 
-export async function fetchActivityFeed(limit = 60): Promise<ActivityEvent[]> {
-    const res = await fetch(`${API_BASE}/activity?limit=${limit}`);
+export async function fetchActivityFeed(limit = 60, projectId?: string | null): Promise<ActivityEvent[]> {
+    const url = projectId 
+        ? `${API_BASE}/activity?limit=${limit}&project_id=${encodeURIComponent(projectId)}` 
+        : `${API_BASE}/activity?limit=${limit}`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch activity feed");
     return res.json();
 }

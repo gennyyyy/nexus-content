@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import re
 from fastapi import FastAPI, Depends
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,8 @@ from activity import (
 from models import (
     ActivityEvent,
     ControlCenterSnapshot,
+    Project,
+    ProjectCreate,
     Task,
     TaskDependency,
     TaskDependencyCreate,
@@ -52,10 +55,69 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/api/projects", response_model=List[str])
+PROJECT_ID_PATTERN = re.compile(r"^[a-z0-9-]+$")
+
+
+@app.get("/api/projects", response_model=List[Project])
 def read_projects(session: Session = Depends(get_session)):
-    projects = session.exec(select(Task.project_id).distinct()).all()
-    return [p for p in projects if p]
+    project_rows = session.exec(select(Project)).all()
+    projects_by_id: dict[str, Project] = {project.id: project for project in project_rows}
+
+    # Backfill UI-visible project cards from tasks created before project rows existed.
+    legacy_project_ids = session.exec(select(Task.project_id).distinct()).all()
+    for project_id in legacy_project_ids:
+        if not project_id or project_id in projects_by_id:
+            continue
+        projects_by_id[project_id] = Project(
+            id=project_id,
+            name=project_id.replace("-", " ").title(),
+            description="Imported from existing tasks",
+        )
+
+    return sorted(projects_by_id.values(), key=lambda project: project.created_at, reverse=True)
+
+
+@app.post("/api/projects", response_model=Project)
+def create_project(project: ProjectCreate, session: Session = Depends(get_session)):
+    if not PROJECT_ID_PATTERN.fullmatch(project.id):
+        raise HTTPException(status_code=400, detail="Project ID must use lowercase letters, numbers, and hyphens only")
+
+    existing = session.get(Project, project.id)
+    if existing:
+        raise HTTPException(status_code=409, detail="Project already exists")
+
+    db_project = Project.model_validate(project)
+    session.add(db_project)
+    record_activity(
+        session,
+        event_type="project.created",
+        entity_type="project",
+        title=f'Created project "{db_project.name}"',
+        summary=truncate(db_project.description or "Project initialized."),
+        actor="Web operator",
+        source="web",
+        project_id=db_project.id,
+    )
+    session.commit()
+    session.refresh(db_project)
+    return db_project
+
+
+@app.get("/api/projects/{project_id}", response_model=Project)
+def read_project(project_id: str, session: Session = Depends(get_session)):
+    project = session.get(Project, project_id)
+    if project:
+        return project
+
+    has_tasks = session.exec(select(Task.id).where(Task.project_id == project_id).limit(1)).first()
+    if not has_tasks:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    return Project(
+        id=project_id,
+        name=project_id.replace("-", " ").title(),
+        description="Imported from existing tasks",
+    )
 
 @app.get("/api/tasks", response_model=List[Task])
 def read_tasks(project_id: Optional[str] = None, session: Session = Depends(get_session)):
@@ -80,6 +142,7 @@ def create_task(task: TaskCreate, session: Session = Depends(get_session)):
         summary=f'Started in {status_label(db_task.status)} with {normalize_priority(db_task.priority)} priority.',
         actor="Web operator",
         source="web",
+        project_id=db_task.project_id,
     )
     session.commit()
     session.refresh(db_task)
@@ -120,6 +183,7 @@ def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depend
                 summary=f'Status changed from {status_label(before["status"])} to {status_label(db_task.status)}.',
                 actor="Web operator",
                 source="web",
+                project_id=db_task.project_id,
             )
         else:
             changed_labels = ", ".join(field.replace("_", " ") for field in changed_fields)
@@ -139,6 +203,7 @@ def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depend
                 summary=f"Changed {changed_labels}.{status_suffix}",
                 actor="Web operator",
                 source="web",
+                project_id=db_task.project_id,
             )
         session.commit()
         session.refresh(db_task)
@@ -178,6 +243,7 @@ def delete_task(task_id: int, session: Session = Depends(get_session)):
         summary=f"Removed the task from {status_label(deleted_task_status)} and cleared related dependencies and memory.",
         actor="Web operator",
         source="web",
+        project_id=task.project_id,
     )
     session.commit()
     return {"ok": True}
@@ -226,6 +292,7 @@ def create_dependency(dependency: TaskDependencyCreate, session: Session = Depen
         summary=f'Added a {dependency.type} dependency between the tasks.',
         actor="Web operator",
         source="web",
+        project_id=target_task.project_id,
     )
     session.commit()
     session.refresh(db_dependency)
@@ -254,6 +321,7 @@ def delete_dependency(dependency_id: int, session: Session = Depends(get_session
         summary=f'Deleted the {dependency.type} link.',
         actor="Web operator",
         source="web",
+        project_id=target_task.project_id if target_task else None,
     )
     session.delete(dependency)
     session.commit()
@@ -307,6 +375,7 @@ def create_task_context(task_id: int, entry: ContextEntryCreate, session: Sessio
         summary=f'{"Captured a structured handoff." if is_handoff else "Logged task context."} {activity_summary}'.strip(),
         actor="Web operator",
         source="web",
+        project_id=task.project_id,
     )
     session.commit()
     session.refresh(db_entry)
@@ -390,7 +459,7 @@ def read_control_center_snapshot(project_id: Optional[str] = None, session: Sess
 
 
 @app.get("/api/activity", response_model=List[ActivityEvent])
-def read_activity_feed(limit: int = 60, session: Session = Depends(get_session)):
-    return build_activity_feed(session, limit)
+def read_activity_feed(limit: int = 60, project_id: Optional[str] = None, session: Session = Depends(get_session)):
+    return build_activity_feed(session, limit, project_id)
 
 app.mount("/mcp", mcp.sse_app("/mcp"))

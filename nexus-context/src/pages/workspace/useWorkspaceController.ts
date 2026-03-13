@@ -22,7 +22,7 @@ import {
 import { buildEdges, buildNodes, computeAutoLayout, edgeId, getFlowBadge, normalizePriority, sortTasks } from "./utils";
 import type { InspectorDraft, PositionMap, TaskBuckets, WorkspaceCounts, WorkspaceMode } from "./types";
 import { useToast } from "../../components/ToastProvider";
-import { useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 const DEFAULT_INSPECTOR_DRAFT: InspectorDraft = {
     title: "",
@@ -33,8 +33,7 @@ const DEFAULT_INSPECTOR_DRAFT: InspectorDraft = {
 
 export function useWorkspaceController() {
     const { toast } = useToast();
-    const [searchParams] = useSearchParams();
-    const projectId = searchParams.get("project");
+    const { projectId } = useParams();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
     const [memoryByTask, setMemoryByTask] = useState<Map<number, TaskMemorySummary>>(new Map());
@@ -127,7 +126,7 @@ export function useWorkspaceController() {
         } finally {
             setLoading(false);
         }
-    }, [setEdges, setNodes]);
+    }, [projectId, setEdges, setNodes]);
 
     useEffect(() => {
         void loadWorkspace();
@@ -155,6 +154,7 @@ export function useWorkspaceController() {
                 title: newTaskTitle.trim(),
                 status: "todo",
                 description: "New task created from the workspace.",
+                project_id: projectId,
             });
             setNewTaskTitle("");
             await loadWorkspace(created.id);
@@ -163,7 +163,7 @@ export function useWorkspaceController() {
             console.error(error);
             toast("Failed to create task", "error");
         }
-    }, [loadWorkspace, newTaskTitle]);
+    }, [loadWorkspace, newTaskTitle, projectId]);
 
     const handleStatusChange = useCallback(async (status: Task["status"]) => {
         if (!selectedTask?.id) return;

@@ -32,7 +32,7 @@ function buildTaskPreview(source: TaskPreviewSource): Task {
     };
 }
 
-export function useControlCenter() {
+export function useControlCenter(projectId?: string) {
     const [snapshot, setSnapshot] = useState<ControlCenterSnapshot | null>(null);
     const [activity, setActivity] = useState<ActivityEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -53,8 +53,8 @@ export function useControlCenter() {
 
         try {
             const [nextSnapshot, nextActivity] = await Promise.all([
-                fetchControlCenterSnapshot(),
-                fetchActivityFeed(60),
+                fetchControlCenterSnapshot(projectId),
+                fetchActivityFeed(60, projectId),
             ]);
 
             setSnapshot(nextSnapshot);
@@ -73,7 +73,7 @@ export function useControlCenter() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [projectId]);
 
     useEffect(() => {
         void loadData();

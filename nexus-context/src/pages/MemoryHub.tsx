@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Brain, CircleHelp, FileCode2, Flag, StepForward, RefreshCw, Inbox } from "lucide-react";
 import { fetchMemoryOverview, fetchTasks, type Task, type TaskMemorySummary } from "../lib/api";
 import { TaskContextModal } from "../components/TaskContextModal";
-import { useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 const STATUS_LABEL: Record<Task["status"], string> = {
     todo: "To Do",
@@ -12,8 +12,7 @@ const STATUS_LABEL: Record<Task["status"], string> = {
 };
 
 export function MemoryHub() {
-    const [searchParams] = useSearchParams();
-    const projectId = searchParams.get("project");
+    const { projectId } = useParams();
     const [memories, setMemories] = useState<TaskMemorySummary[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);

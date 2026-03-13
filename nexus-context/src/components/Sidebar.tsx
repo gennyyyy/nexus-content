@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { NavLink, useSearchParams } from "react-router-dom";
-import { Brain, Settings, Workflow, FolderGit2 } from "lucide-react";
-import { API_BASE, fetchProjects } from "../lib/api";
+import { NavLink, useParams } from "react-router-dom";
+import { Brain, Settings, Workflow, FolderGit2, Activity } from "lucide-react";
+import { API_BASE, fetchProjects, type Project } from "../lib/api";
+import { SettingsModal } from "./SettingsModal";
 
 type McpStatus = "online" | "offline" | "checking";
 
@@ -55,78 +56,115 @@ const STATUS_CONFIG: Record<McpStatus, { dot: string; label: string; badge: stri
 export function Sidebar() {
     const mcpStatus = useMcpHealth();
     const cfg = STATUS_CONFIG[mcpStatus];
-    const [searchParams, setSearchParams] = useSearchParams();
-    const currentProject = searchParams.get("project") || "";
-    const [projects, setProjects] = useState<string[]>([]);
+    const { projectId } = useParams();
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
         void fetchProjects().then(setProjects).catch(console.error);
     }, []);
 
-    const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        if (val) {
-            setSearchParams({ project: val });
-        } else {
-            setSearchParams({});
-        }
-    };
+    const currentProject = projects.find(p => p.id === projectId);
 
     return (
         <aside className="z-20 flex w-full shrink-0 flex-col border-b border-zinc-800/80 bg-zinc-950/92 text-zinc-100 backdrop-blur-xl lg:h-full lg:w-[260px] lg:border-b-0 lg:border-r">
             <div className="flex items-center gap-3 border-b border-zinc-800/80 px-4 py-4">
-                <div className="flex h-8 w-8 items-center justify-center bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/20">
-                    <Settings size={14} className="text-white" />
+                <div className="flex h-8 w-8 items-center justify-center bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/20 rounded">
+                    <Activity size={16} className="text-sky-300" />
                 </div>
                 <div>
-                    <div className="text-sm font-semibold tracking-tight">Nexus Context</div>
+                    <div className="text-sm font-semibold tracking-tight text-white">Nexus Context</div>
                     <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Task & memory cockpit</div>
                 </div>
             </div>
 
             <div className="border-b border-zinc-800/80 px-4 py-3">
-                <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                    <FolderGit2 size={12} /> Workspace Context
-                </label>
-                <select
-                    value={currentProject}
-                    onChange={handleProjectChange}
-                    className="w-full rounded border border-zinc-700 bg-zinc-900/40 backdrop-blur-md px-2 py-1.5 text-sm text-zinc-200 outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/50"
+                <div className="mb-2 flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                        <FolderGit2 size={12} /> Project Context
+                    </label>
+                    <button 
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-sky-400 transition-colors"
+                        title="Switch Project"
+                    >
+                        <Settings size={10} />
+                        Settings
+                    </button>
+                </div>
+                <div 
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="group w-full rounded border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm font-medium text-zinc-200 cursor-pointer hover:bg-zinc-800 hover:border-zinc-700 transition-all flex items-center justify-between"
                 >
-                    <option value="">Global (All Projects)</option>
-                    {projects.map(p => (
-                        <option key={p} value={p}>{p}</option>
-                    ))}
-                </select>
+                    <span className="truncate">{currentProject ? currentProject.name : "Loading..."}</span>
+                    <FolderGit2 size={14} className="text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                </div>
             </div>
 
             <nav className="flex flex-1 gap-1 overflow-x-auto px-3 py-3 lg:flex-col lg:overflow-visible" aria-label="Main navigation">
                 <NavLink
-                    to="/"
-                    className={({ isActive }) => `flex min-w-[140px] items-center gap-3 px-3 py-2.5 transition-all font-medium text-sm ${isActive ? 'bg-sky-500/12 text-white ring-1 ring-sky-400/25' : 'text-zinc-400 hover:bg-zinc-800/45 hover:text-white'}`}
-                    aria-label="Workspace"
+                    to={`/projects/${projectId}/control-center`}
+                    className={({ isActive }) => `group flex min-w-[140px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all ${
+                        isActive 
+                            ? 'bg-sky-500/10 text-sky-100 ring-1 ring-sky-500/20 shadow-[0_0_15px_rgba(14,165,233,0.1)]' 
+                            : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+                    }`}
                 >
-                    <Workflow size={16} />
-                    <span>Workspace</span>
+                    {({ isActive }) => (
+                        <>
+                            <Activity size={16} className={isActive ? "text-sky-400" : "text-zinc-500 group-hover:text-zinc-400"} />
+                            <span>Control Center</span>
+                        </>
+                    )}
                 </NavLink>
                 <NavLink
-                    to="/memory"
-                    className={({ isActive }) => `flex min-w-[140px] items-center gap-3 px-3 py-2.5 transition-all font-medium text-sm ${isActive ? 'bg-sky-500/12 text-white ring-1 ring-sky-400/25' : 'text-zinc-400 hover:bg-zinc-800/45 hover:text-white'}`}
-                    aria-label="Memory Hub"
+                    to={`/projects/${projectId}/workspace`}
+                    className={({ isActive }) => `group flex min-w-[140px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all ${
+                        isActive 
+                            ? 'bg-sky-500/10 text-sky-100 ring-1 ring-sky-500/20 shadow-[0_0_15px_rgba(14,165,233,0.1)]' 
+                            : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+                    }`}
                 >
-                    <Brain size={16} />
-                    <span>Memory Hub</span>
+                    {({ isActive }) => (
+                        <>
+                            <Workflow size={16} className={isActive ? "text-sky-400" : "text-zinc-500 group-hover:text-zinc-400"} />
+                            <span>Workspace</span>
+                        </>
+                    )}
+                </NavLink>
+                <NavLink
+                    to={`/projects/${projectId}/memory`}
+                    className={({ isActive }) => `group flex min-w-[140px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all ${
+                        isActive 
+                            ? 'bg-sky-500/10 text-sky-100 ring-1 ring-sky-500/20 shadow-[0_0_15px_rgba(14,165,233,0.1)]' 
+                            : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+                    }`}
+                >
+                    {({ isActive }) => (
+                        <>
+                            <Brain size={16} className={isActive ? "text-sky-400" : "text-zinc-500 group-hover:text-zinc-400"} />
+                            <span>Memory Hub</span>
+                        </>
+                    )}
                 </NavLink>
             </nav>
-            <div className="flex items-center justify-between border-t border-zinc-800/80 px-4 py-3 text-xs text-zinc-500">
-                <span className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${cfg.dot}`}></div>
-                    {cfg.label}
-                </span>
-                <span className={`border px-2 py-0.5 text-[10px] font-bold tracking-wider ${cfg.badge}`}>
-                    {mcpStatus.toUpperCase()}
-                </span>
+            
+            <div className="flex flex-col gap-2 border-t border-zinc-800/80 px-4 py-3">
+                <div className="flex items-center justify-between text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mb-1">
+                    <span>System Status</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-zinc-400 bg-zinc-900/50 rounded-lg p-2 border border-zinc-800/50">
+                    <span className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full shadow-[0_0_8px_current] ${cfg.dot}`}></div>
+                        {cfg.label}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider ${cfg.badge}`}>
+                        {mcpStatus.toUpperCase()}
+                    </span>
+                </div>
             </div>
+
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
         </aside>
     );
 }

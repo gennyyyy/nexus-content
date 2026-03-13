@@ -8,6 +8,7 @@ from models import (
     ContextEntry,
     ControlCenterSnapshot,
     HandoffPulseItem,
+    Project,
     ReadyQueueItem,
     Task,
     TaskDependency,
@@ -59,6 +60,7 @@ def record_activity(
     task_title: str | None = None,
     actor: str = "System",
     source: str = "system",
+    project_id: str | None = None,
     created_at: datetime | None = None,
 ) -> ActivityEvent:
     event = ActivityEvent(
@@ -71,6 +73,7 @@ def record_activity(
         summary=summary,
         actor=actor,
         source=source,
+        project_id=project_id,
         created_at=created_at or datetime.utcnow(),
     )
     session.add(event)
@@ -78,6 +81,21 @@ def record_activity(
 
 
 def seed_activity_events(session: Session) -> None:
+    # Ensure default project exists
+    default_project = session.get(Project, "default")
+    if not default_project:
+        default_project = Project(id="default", name="Default Project", description="Auto-created default project")
+        session.add(default_project)
+        session.commit()
+    
+    # Assign existing tasks to default project if not assigned
+    tasks_without_project = session.exec(select(Task).where(Task.project_id == None)).all()
+    if tasks_without_project:
+        for task in tasks_without_project:
+            task.project_id = "default"
+            session.add(task)
+        session.commit()
+    
     existing_event = session.exec(select(ActivityEvent.id).limit(1)).first()
     if existing_event is not None:
         return
@@ -100,6 +118,7 @@ def seed_activity_events(session: Session) -> None:
                 summary=f'Started in {status_label(task.status)} with {normalize_priority(task.priority)} priority.',
                 actor="System",
                 source="system",
+                project_id=task.project_id,
                 created_at=task.created_at,
             )
         )
@@ -124,6 +143,7 @@ def seed_activity_events(session: Session) -> None:
                 summary=body,
                 actor="System",
                 source="system",
+                project_id=task.project_id,
                 created_at=entry.timestamp,
             )
         )
@@ -136,9 +156,11 @@ def seed_activity_events(session: Session) -> None:
     session.commit()
 
 
-def build_activity_feed(session: Session, limit: int = 60) -> list[ActivityEvent]:
+def build_activity_feed(session: Session, limit: int = 60, project_id: str | None = None) -> list[ActivityEvent]:
     safe_limit = max(1, min(limit, 200))
     statement = select(ActivityEvent).order_by(ActivityEvent.created_at.desc(), ActivityEvent.id.desc()).limit(safe_limit)
+    if project_id:
+        statement = statement.where(ActivityEvent.project_id == project_id)
     return session.exec(statement).all()
 
 

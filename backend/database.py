@@ -23,6 +23,10 @@ TASK_MIGRATIONS = {
     "project_id": "ALTER TABLE task ADD COLUMN project_id VARCHAR",
 }
 
+ACTIVITY_EVENT_MIGRATIONS = {
+    "project_id": "ALTER TABLE activityevent ADD COLUMN project_id VARCHAR REFERENCES project(id)",
+}
+
 TASK_DEPENDENCY_MIGRATIONS = {
     "source_handle": "ALTER TABLE taskdependency ADD COLUMN source_handle VARCHAR",
     "target_handle": "ALTER TABLE taskdependency ADD COLUMN target_handle VARCHAR",
@@ -41,6 +45,11 @@ def run_dev_migrations():
     else:
         task_columns = {column["name"] for column in inspector.get_columns("task")}
 
+    if "activityevent" not in inspector.get_table_names():
+        activity_columns = set()
+    else:
+        activity_columns = {column["name"] for column in inspector.get_columns("activityevent")}
+
     if "taskdependency" not in inspector.get_table_names():
         task_dependency_columns = set()
     else:
@@ -53,12 +62,15 @@ def run_dev_migrations():
         for column_name, statement in TASK_MIGRATIONS.items():
             if column_name not in task_columns:
                 connection.execute(text(statement))
+        for column_name, statement in ACTIVITY_EVENT_MIGRATIONS.items():
+            if column_name not in activity_columns:
+                connection.execute(text(statement))
         for column_name, statement in TASK_DEPENDENCY_MIGRATIONS.items():
             if column_name not in task_dependency_columns:
                 connection.execute(text(statement))
 
 def create_db_and_tables():
-    from models import Task, TaskDependency, ContextEntry # Ensure models are loaded
+    from models import Task, TaskDependency, ContextEntry, Project, ActivityEvent # Ensure models are loaded
     SQLModel.metadata.create_all(engine)
     run_dev_migrations()
 

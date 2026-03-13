@@ -14,11 +14,12 @@ import {
     Workflow,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { TaskContextModal } from "../components/TaskContextModal";
 import { cn } from "../lib/utils";
 import type { ActivityEvent, AttentionTaskItem, HandoffPulseItem, ReadyQueueItem, ResumePacket } from "../lib/api";
 import { useControlCenter } from "./control-center/useControlCenter";
+import { ChartsSection } from "./control-center/ChartsSection";
 
 const STATUS_LABELS = {
     todo: "To Do",
@@ -77,7 +78,8 @@ function priorityClass(priority: string) {
 }
 
 export function ControlCenter() {
-    const controlCenter = useControlCenter();
+    const { projectId } = useParams();
+    const controlCenter = useControlCenter(projectId);
     const snapshot = controlCenter.snapshot;
 
     return (
@@ -166,6 +168,8 @@ export function ControlCenter() {
                                     </div>
                                 </SectionPanel>
                             </div>
+
+                            <ChartsSection snapshot={snapshot} activity={controlCenter.activity} />
 
                             <div className="grid gap-4 xl:grid-cols-2">
                                 <SectionPanel

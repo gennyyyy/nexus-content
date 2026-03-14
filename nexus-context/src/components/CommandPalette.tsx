@@ -1,18 +1,18 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Command } from "cmdk";
 import { Search, FileText, LayoutDashboard, Brain, Network, Plus, FolderSync, X } from "lucide-react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { fetchTasks, fetchProjects, type Task, type Project } from "../lib/api";
-import { cn } from "../lib/utils";
+;
 
 export function CommandPalette() {
     const [open, setOpen] = useState(false);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [_, setLoading] = useState(false);
     const navigate = useNavigate();
     const { projectId } = useParams();
-    const location = useLocation();
+    
 
     // Toggle the menu when ⌘K is pressed
     useEffect(() => {

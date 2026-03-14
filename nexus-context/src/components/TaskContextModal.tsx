@@ -11,6 +11,7 @@ import {
     type TaskMemorySummary,
 } from "../lib/api";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { cn } from "../lib/utils";
 
 interface Props {
     task: Task | null;

@@ -1,28 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useEdgesState, useNodesState, type Connection, type Edge, type Node, type NodeChange } from "@xyflow/react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { DropResult } from "@hello-pangea/dnd";
-import {
-    createDependency,
-    createTask,
-    deleteDependency,
-    deleteTask,
-    fetchWorkspaceSnapshot,
-    updateTask,
-    type Task,
-    type TaskDependency,
-    type TaskMemorySummary,
-    type TaskOperationalState,
-} from "../../lib/api";
+import type { Connection } from "@xyflow/react";
+import type { Task } from "../../lib/api";
 import {
     DEPENDENCY_TYPES,
-    NODE_POSITIONS_KEY,
     WORKSPACE_MODE_KEY,
     type DependencyType,
 } from "./constants";
-import { buildEdges, buildNodes, computeAutoLayout, edgeId, getFlowBadge, normalizePriority, sortTasks } from "./utils";
-import type { PositionMap, TaskBuckets, WorkspaceCounts, WorkspaceMode } from "./types";
+import { edgeId, getFlowBadge, normalizePriority } from "./utils";
+import type { WorkspaceMode } from "./types";
 import { useToast } from "../../components/ToastProvider";
 import { useParams, useSearchParams } from "react-router-dom";
+
+import {
+    useWorkspaceSnapshot,
+    useCreateTask,
+    useUpdateTask,
+    useDeleteTask,
+    useCreateDependency,
+    useDeleteDependency,
+} from "./hooks/useWorkspaceQueries";
+import { useWorkspaceGraph } from "./hooks/useWorkspaceGraph";
+import { useWorkspaceFilters } from "./hooks/useWorkspaceFilters";
+
+interface InspectorDraft {
+    title: string;
+    description: string;
+    priority: "low" | "medium" | "high" | "critical";
+    labels: string;
+}
 
 const DEFAULT_INSPECTOR_DRAFT: InspectorDraft = {
     title: "",
@@ -35,57 +41,77 @@ export function useWorkspaceController() {
     const { toast } = useToast();
     const { projectId } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
-    const [memoryByTask, setMemoryByTask] = useState<Map<number, TaskMemorySummary>>(new Map());
-    const [operationalByTask, setOperationalByTask] = useState<Map<number, TaskOperationalState>>(new Map());
+
+    // Data Fetching via React Query
+    const { data: snapshot, isLoading: loading } = useWorkspaceSnapshot(projectId);
+    
+    // Mutations
+    const createTaskMutation = useCreateTask(projectId);
+    const updateTaskMutation = useUpdateTask(projectId);
+    const deleteTaskMutation = useDeleteTask(projectId);
+    const createDependencyMutation = useCreateDependency(projectId);
+    const deleteDependencyMutation = useDeleteDependency(projectId);
+
+    // Derived Data Lookups
+    const tasks = useMemo(() => snapshot?.tasks || [], [snapshot]);
+    const dependencies = useMemo(() => snapshot?.dependencies || [], [snapshot]);
+    const memoryByTask = useMemo(() => new Map((snapshot?.memory || []).map((item) => [item.task_id, item] as const)), [snapshot]);
+    const operationalByTask = useMemo(() => new Map((snapshot?.task_states || []).map((item) => [item.task_id, item] as const)), [snapshot]);
+
+    // Graph State
+    const graph = useWorkspaceGraph();
+    const { nodes, edges, setNodes, handleAutoArrange: autoArrangeGraph, syncGraph, onNodesChange } = graph;
+
+    // Filter State
+    const filters = useWorkspaceFilters(tasks, memoryByTask, operationalByTask, nodes, edges);
+
+    // Workspace mode & ui state
     const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => {
         if (typeof window === "undefined") return "easy";
         return window.localStorage.getItem(WORKSPACE_MODE_KEY) === "advanced" ? "advanced" : "easy";
     });
-    const [nodePositions, setNodePositions] = useState<PositionMap>(() => {
-        if (typeof window === "undefined") return {};
-        try {
-            return JSON.parse(window.localStorage.getItem(NODE_POSITIONS_KEY) || "{}") as PositionMap;
-        } catch {
-            return {};
-        }
-    });
-    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [contextTask, setContextTask] = useState<Task | null>(null);
+    const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+    const [contextTaskId, setContextTaskId] = useState<number | null>(null);
     const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [savingEdge, setSavingEdge] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState("");
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"all" | Task["status"]>("all");
-    const [operationalFilter, setOperationalFilter] = useState<"all" | "ready" | "blocked" | "active">("all");
-    const [hideDone, setHideDone] = useState(false);
     const [dependencyType, setDependencyType] = useState<DependencyType>(DEPENDENCY_TYPES[0]);
     const [inspectorDraft, setInspectorDraft] = useState<InspectorDraft>(DEFAULT_INSPECTOR_DRAFT);
 
-    const nodePositionsRef = useRef(nodePositions);
-    const selectedTaskIdRef = useRef<number | undefined>(selectedTask?.id);
-
-    useEffect(() => {
-        nodePositionsRef.current = nodePositions;
-        if (typeof window !== "undefined") {
-            window.localStorage.setItem(NODE_POSITIONS_KEY, JSON.stringify(nodePositions));
-        }
-    }, [nodePositions]);
-
+    // Sync localStorage
     useEffect(() => {
         if (typeof window !== "undefined") {
             window.localStorage.setItem(WORKSPACE_MODE_KEY, workspaceMode);
         }
     }, [workspaceMode]);
 
+    // Handle URL jumping
     useEffect(() => {
-        selectedTaskIdRef.current = selectedTask?.id;
-    }, [selectedTask]);
+        const urlTaskId = searchParams.get("taskId");
+        if (urlTaskId && snapshot) {
+            const id = Number(urlTaskId);
+            if (snapshot.tasks.some(t => t.id === id)) {
+                setSelectedTaskId(id);
+                setSearchParams((prev) => { prev.delete("taskId"); return prev; }, { replace: true });
+            }
+        }
+    }, [searchParams, setSearchParams, snapshot]);
 
+    // Sync Graph to fresh data
+    useEffect(() => {
+        if (snapshot) {
+            syncGraph(snapshot.tasks, snapshot.dependencies, memoryByTask, operationalByTask);
+            // Verify selectedEdgeId still exists
+            if (selectedEdgeId && !snapshot.dependencies.some(d => edgeId(d) === selectedEdgeId)) {
+                setSelectedEdgeId(null);
+            }
+        }
+    }, [snapshot, memoryByTask, operationalByTask, syncGraph, selectedEdgeId]);
+
+    // Selectors
+    const selectedTask = useMemo(() => tasks.find(t => t.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
+    const contextTask = useMemo(() => tasks.find(t => t.id === contextTaskId) ?? null, [tasks, contextTaskId]);
+
+    // Inspector draft syncing
     useEffect(() => {
         setInspectorDraft({
             title: selectedTask?.title || "",
@@ -95,324 +121,169 @@ export function useWorkspaceController() {
         });
     }, [selectedTask]);
 
-    const loadWorkspace = useCallback(async (selectedId?: number) => {
-        setLoading(true);
-        try {
-            const snapshot = await fetchWorkspaceSnapshot(projectId);
-            const nextMemory = new Map(snapshot.memory.map((item) => [item.task_id, item] as const));
-            const nextOperational = new Map(snapshot.task_states.map((item) => [item.task_id, item] as const));
-
-            setTasks(snapshot.tasks);
-            setDependencies(snapshot.dependencies);
-            setMemoryByTask(nextMemory);
-            setOperationalByTask(nextOperational);
-            setNodes(buildNodes(snapshot.tasks, nextMemory, nextOperational, nodePositionsRef.current));
-            setEdges(buildEdges(snapshot.dependencies));
-
-            const urlTaskId = searchParams.get("taskId");
-            const activeTaskId = urlTaskId ? Number(urlTaskId) : (selectedId ?? selectedTaskIdRef.current);
-            const nextSelectedTask = activeTaskId
-                ? snapshot.tasks.find((task) => task.id === activeTaskId) ?? null
-                : null;
-
-            setSelectedTask(nextSelectedTask);
-
-            // Clear taskId from URL to avoid re-selecting on manual refresh if needed, 
-            // but keep it if we want it to be bookmarkable. 
-            // Let's clear it for now to treat it as a "jump to" action.
-            if (urlTaskId) {
-                setSearchParams((prev) => {
-                    prev.delete("taskId");
-                    return prev;
-                }, { replace: true });
-            }
-
-            setSelectedEdgeId((current) =>
-                current && snapshot.dependencies.some((dependency) => edgeId(dependency) === current) ? current : null,
-            );
-            setContextTask((current) => {
-                if (!current?.id) return null;
-                return snapshot.tasks.find((task) => task.id === current.id) ?? null;
-            });
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    }, [projectId, setEdges, setNodes]);
-
-    useEffect(() => {
-        void loadWorkspace();
-    }, [loadWorkspace]);
-
-    const handleGraphNodesChange = useCallback((changes: NodeChange<Node>[]) => {
-        onNodesChange(changes);
-        setNodePositions((current) => {
-            const next = { ...current };
-            for (const change of changes) {
-                if (change.type === "position" && change.position) {
-                    next[change.id] = change.position;
-                }
-            }
-            return next;
-        });
-    }, [onNodesChange]);
-
+    // Actions
     const handleCreateTask = useCallback(async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!newTaskTitle.trim()) return;
 
-        try {
-            const created = await createTask({
-                title: newTaskTitle.trim(),
-                status: "todo",
-                description: "New task created from the workspace.",
-                project_id: projectId,
-            });
-            setNewTaskTitle("");
-            await loadWorkspace(created.id);
-            toast(`Task "${created.title}" created`, "success");
-        } catch (error) {
-            console.error(error);
-            toast("Failed to create task", "error");
-        }
-    }, [loadWorkspace, newTaskTitle, projectId]);
+        createTaskMutation.mutate(
+            { title: newTaskTitle.trim(), status: "todo", description: "New task created from the workspace.", project_id: projectId },
+            {
+                onSuccess: (created) => {
+                    setNewTaskTitle("");
+                    setSelectedTaskId(created.id!);
+                    toast(`Task "${created.title}" created`, "success");
+                },
+                onError: () => toast("Failed to create task", "error")
+            }
+        );
+    }, [newTaskTitle, projectId, createTaskMutation, toast]);
 
-    const handleStatusChange = useCallback(async (status: Task["status"]) => {
+    const handleStatusChange = useCallback((status: Task["status"]) => {
         if (!selectedTask?.id) return;
-        const taskId = selectedTask.id;
-
-        // Optimistic update
-        setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, status } : t)));
-        setSelectedTask((current) => (current?.id === taskId ? { ...current, status } : current));
+        const id = selectedTask.id;
+        
+        // Optimistically update Graph nodes locally to avoid snapback before React Query cache invalidates
         setNodes((current) =>
-            current.map((node) =>
-                node.id === String(taskId)
-                    ? { ...node, data: { ...node.data, task: { ...node.data.task, status } } }
-                    : node,
-            ),
+            current.map((node) => node.id === String(id) ? { ...node, data: { ...node.data, task: { ...(node.data.task as Task), status } } } : node)
         );
 
-        try {
-            await updateTask(taskId, { status });
-            // Refresh to sync any server-side side effects (like operational state)
-            void loadWorkspace(taskId);
-        } catch (error) {
-            console.error(error);
-            toast("Failed to update status", "error");
-            void loadWorkspace(taskId); // Rollback
-        }
-    }, [loadWorkspace, selectedTask, setNodes, toast]);
+        updateTaskMutation.mutate({ id, status }, {
+            onError: () => toast("Failed to update status", "error")
+        });
+    }, [selectedTask, updateTaskMutation, setNodes, toast]);
 
-    const handleSaveTaskDetails = useCallback(async () => {
+    const handleSaveTaskDetails = useCallback(() => {
         if (!selectedTask?.id || !inspectorDraft.title.trim()) return;
-        const taskId = selectedTask.id;
+        
+        updateTaskMutation.mutate({
+            id: selectedTask.id,
+            title: inspectorDraft.title.trim(),
+            description: inspectorDraft.description.trim(),
+            priority: normalizePriority(inspectorDraft.priority),
+            labels: inspectorDraft.labels.trim(),
+        }, {
+            onSuccess: () => toast("Task details saved", "success"),
+            onError: () => toast("Failed to save task details", "error")
+        });
+    }, [selectedTask, inspectorDraft, updateTaskMutation, toast]);
 
-        try {
-            await updateTask(taskId, {
-                title: inspectorDraft.title.trim(),
-                description: inspectorDraft.description.trim(),
-                priority: normalizePriority(inspectorDraft.priority),
-                labels: inspectorDraft.labels.trim(),
-            });
-            await loadWorkspace(taskId);
-            toast("Task details saved", "success");
-        } catch (error) {
-            console.error(error);
-            toast("Failed to save task details", "error");
-        }
-    }, [inspectorDraft.description, inspectorDraft.labels, inspectorDraft.priority, inspectorDraft.title, loadWorkspace, selectedTask]);
-
-    const handleDeleteSelectedTask = useCallback(async () => {
+    const handleDeleteSelectedTask = useCallback(() => {
         if (!selectedTask?.id) return;
-        const selectedTaskId = selectedTask.id;
+        const id = selectedTask.id;
 
-        // Optimistic update
-        setTasks((current) => current.filter((t) => t.id !== selectedTaskId));
-        setNodes((current) => current.filter((node) => node.id !== String(selectedTaskId)));
-        setEdges((current) => current.filter((edge) => edge.source !== String(selectedTaskId) && edge.target !== String(selectedTaskId)));
-        setSelectedTask(null);
+        setSelectedTaskId(null);
         setSelectedEdgeId(null);
+        if (contextTaskId === id) setContextTaskId(null);
 
-        try {
-            await deleteTask(selectedTaskId);
-            setNodePositions((current) => {
-                const next = { ...current };
-                delete next[String(selectedTaskId)];
-                return next;
-            });
-            setContextTask((current) => (current?.id === selectedTaskId ? null : current));
-            toast("Task deleted", "success");
-            // No need to loadWorkspace here as we've manually cleaned up
-        } catch (error) {
-            console.error(error);
-            toast("Failed to delete task", "error");
-            void loadWorkspace(); // Rollback
-        }
-    }, [loadWorkspace, selectedTask, setEdges, setNodes, toast]);
+        deleteTaskMutation.mutate(id, {
+            onSuccess: () => {
+                graph.setNodePositions((curr: Record<string, { x: number; y: number }>) => { const next = { ...curr }; delete next[String(id)]; return next; });
+                toast("Task deleted", "success");
+            },
+            onError: () => toast("Failed to delete task", "error")
+        });
+    }, [selectedTask, contextTaskId, deleteTaskMutation, graph, toast]);
 
-    const handleDeleteSelectedEdge = useCallback(async () => {
+    const handleDeleteSelectedEdge = useCallback(() => {
         if (!selectedEdgeId) return;
         const dependency = dependencies.find((item) => edgeId(item) === selectedEdgeId);
         if (!dependency?.id) return;
 
-        try {
-            await deleteDependency(dependency.id);
-            setSelectedEdgeId(null);
-            await loadWorkspace(selectedTask?.id);
-            toast("Dependency removed", "success");
-        } catch (error) {
-            console.error(error);
-            toast("Failed to delete dependency", "error");
-        }
-    }, [dependencies, loadWorkspace, selectedEdgeId, selectedTask]);
+        deleteDependencyMutation.mutate(dependency.id, {
+            onSuccess: () => {
+                setSelectedEdgeId(null);
+                toast("Dependency removed", "success");
+            },
+            onError: () => toast("Failed to delete dependency", "error")
+        });
+    }, [selectedEdgeId, dependencies, deleteDependencyMutation, toast]);
 
-    const handleConnect = useCallback(async (connection: Connection) => {
-        if (!connection.source || !connection.target || savingEdge) return;
-        setSavingEdge(true);
+    const handleConnect = useCallback((connection: Connection) => {
+        if (!connection.source || !connection.target || createDependencyMutation.isPending) return;
 
-        try {
-            const created = await createDependency({
-                source_task_id: Number(connection.source),
-                target_task_id: Number(connection.target),
-                type: dependencyType,
-                source_handle: connection.sourceHandle ?? undefined,
-                target_handle: connection.targetHandle ?? undefined,
-            });
-            await loadWorkspace(selectedTask?.id ?? created.source_task_id);
-            toast(`Dependency "${dependencyType}" created`, "success");
-        } catch (error) {
-            console.error(error);
-            toast("Failed to create dependency", "error");
-        } finally {
-            setSavingEdge(false);
-        }
-    }, [dependencyType, loadWorkspace, savingEdge, selectedTask]);
+        createDependencyMutation.mutate({
+            source_task_id: Number(connection.source),
+            target_task_id: Number(connection.target),
+            type: dependencyType,
+            source_handle: connection.sourceHandle ?? undefined,
+            target_handle: connection.targetHandle ?? undefined,
+        }, {
+            onSuccess: () => toast(`Dependency "${dependencyType}" created`, "success"),
+            onError: () => toast("Failed to create dependency", "error")
+        });
+    }, [createDependencyMutation, dependencyType, toast]);
 
-    const handleBoardDragEnd = useCallback(async (result: DropResult) => {
+    const handleBoardDragEnd = useCallback((result: DropResult) => {
         if (!result.destination || result.destination.droppableId === result.source.droppableId) return;
 
-        const taskId = Number(result.draggableId);
-        const nextStatus = result.destination.droppableId as Task["status"];
-        setTasks((current) => current.map((task) => (task.id === taskId ? { ...task, status: nextStatus } : task)));
-        setSelectedTask((current) => (current?.id === taskId ? { ...current, status: nextStatus } : current));
+        const id = Number(result.draggableId);
+        const status = result.destination.droppableId as Task["status"];
 
-        try {
-            await updateTask(taskId, { status: nextStatus });
-        } catch (error) {
-            console.error(error);
-        } finally {
-            await loadWorkspace(selectedTaskIdRef.current ?? taskId);
-        }
-    }, [loadWorkspace]);
-
-    const handleAutoArrange = useCallback(() => {
-        const nextPositions = computeAutoLayout(tasks, dependencies);
-        setNodePositions(nextPositions);
-        setNodes((current) => current.map((node) => ({ ...node, position: nextPositions[node.id] || node.position })));
-    }, [dependencies, setNodes, tasks]);
+        updateTaskMutation.mutate({ id, status }, {
+            onError: () => toast("Failed to move task", "error")
+        });
+    }, [updateTaskMutation, toast]);
 
     const selectTask = useCallback((task: Task) => {
-        setSelectedTask(task);
+        setSelectedTaskId(task.id!);
         setSelectedEdgeId(null);
     }, []);
 
     const openContextTask = useCallback((task: Task) => {
-        setContextTask(task);
+        setContextTaskId(task.id!);
     }, []);
 
     const inspectAndOpenTask = useCallback((task: Task) => {
-        setSelectedTask(task);
-        setContextTask(task);
+        setSelectedTaskId(task.id!);
+        setContextTaskId(task.id!);
         setSelectedEdgeId(null);
     }, []);
 
     const closeContextTask = useCallback(() => {
-        setContextTask(null);
+        setContextTaskId(null);
     }, []);
 
     const updateInspectorField = useCallback((field: keyof InspectorDraft, value: string) => {
         setInspectorDraft((current) => ({ ...current, [field]: value }));
     }, []);
 
-    const visibleTasks = useMemo(() => {
-        const filtered = tasks.filter((task) => {
-            const operational = task.id ? operationalByTask.get(task.id) : undefined;
-            const memory = task.id ? memoryByTask.get(task.id) : undefined;
+    const handleAutoArrange = useCallback(() => {
+        autoArrangeGraph(tasks, dependencies);
+    }, [autoArrangeGraph, tasks, dependencies]);
 
-            if (hideDone && task.status === "done") return false;
-            if (statusFilter !== "all" && task.status !== statusFilter) return false;
-            if (operationalFilter === "ready" && !operational?.is_ready) return false;
-            if (operationalFilter === "blocked" && !operational?.is_blocked) return false;
-            if (operationalFilter === "active" && task.status !== "in_progress") return false;
-            if (!search.trim()) return true;
-
-            const query = search.toLowerCase();
-            return (
-                task.title.toLowerCase().includes(query) ||
-                (task.description || "").toLowerCase().includes(query) ||
-                (memory?.latest_summary || "").toLowerCase().includes(query) ||
-                (memory?.latest_next_step || "").toLowerCase().includes(query)
-            );
-        });
-
-        return sortTasks(filtered);
-    }, [hideDone, memoryByTask, operationalByTask, operationalFilter, search, statusFilter, tasks]);
-
-    const tasksByStatus = useMemo<TaskBuckets>(() => ({
-        todo: visibleTasks.filter((task) => task.status === "todo"),
-        in_progress: visibleTasks.filter((task) => task.status === "in_progress"),
-        done: visibleTasks.filter((task) => task.status === "done"),
-    }), [visibleTasks]);
-
-    const visibleIds = useMemo(() => new Set(visibleTasks.map((task) => String(task.id))), [visibleTasks]);
-    const visibleNodes = useMemo(() => nodes.filter((node) => visibleIds.has(node.id)), [nodes, visibleIds]);
-    const visibleEdges = useMemo(
-        () => edges.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target)),
-        [edges, visibleIds],
-    );
     const selectedMemory = selectedTask?.id ? memoryByTask.get(selectedTask.id) : undefined;
     const selectedState = selectedTask?.id ? operationalByTask.get(selectedTask.id) : undefined;
     const selectedFlow = selectedTask ? getFlowBadge(selectedTask, selectedState) : null;
     const selectedDependency = selectedEdgeId ? dependencies.find((dependency) => edgeId(dependency) === selectedEdgeId) : undefined;
-    const readyTasks = useMemo(
-        () => visibleTasks.filter((task) => (task.id ? operationalByTask.get(task.id)?.is_ready : false)).slice(0, 6),
-        [operationalByTask, visibleTasks],
-    );
-    const counts = useMemo<WorkspaceCounts>(() => ({
-        todo: tasks.filter((task) => task.status === "todo").length,
-        in_progress: tasks.filter((task) => task.status === "in_progress").length,
-        done: tasks.filter((task) => task.status === "done").length,
-        ready: [...operationalByTask.values()].filter((state) => state.is_ready).length,
-        blocked: [...operationalByTask.values()].filter((state) => state.is_blocked).length,
-    }), [operationalByTask, tasks]);
 
     return {
+        // Data lookups
         tasks,
         memoryByTask,
         operationalByTask,
+        
+        // UI State
         workspaceMode,
         setWorkspaceMode,
         loading,
-        savingEdge,
+        savingEdge: createDependencyMutation.isPending,
+        
         newTaskTitle,
         setNewTaskTitle,
-        search,
-        setSearch,
-        statusFilter,
-        setStatusFilter,
-        operationalFilter,
-        setOperationalFilter,
-        hideDone,
-        setHideDone,
         dependencyType,
         setDependencyType,
-        tasksByStatus,
-        visibleTasks,
-        visibleNodes,
-        visibleEdges,
-        readyTasks,
-        counts,
+        
+        // Filters & Derived
+        ...filters,
+
+        // Graph State
+        ...graph,
+        handleGraphNodesChange: onNodesChange,
+        handleAutoArrange,
+        setSelectedEdgeId,
+
+        // Selection & Inspector
         selectedTask,
         contextTask,
         closeContextTask,
@@ -425,6 +296,8 @@ export function useWorkspaceController() {
         selectedDependency,
         inspectorDraft,
         updateInspectorField,
+
+        // Actions
         handleCreateTask,
         handleStatusChange,
         handleSaveTaskDetails,
@@ -432,9 +305,5 @@ export function useWorkspaceController() {
         handleDeleteSelectedEdge,
         handleConnect,
         handleBoardDragEnd,
-        handleGraphNodesChange,
-        handleAutoArrange,
-        onEdgesChange,
-        setSelectedEdgeId,
     };
 }

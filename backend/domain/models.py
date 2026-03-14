@@ -1,18 +1,21 @@
-from typing import Optional, List
 from datetime import datetime
-from sqlmodel import SQLModel, Field, Relationship
 from enum import Enum
+from typing import List, Optional
+
+from sqlmodel import Field, Relationship, SQLModel
+
 
 class TaskStatus(str, Enum):
     TODO = "todo"
     IN_PROGRESS = "in_progress"
     DONE = "done"
 
+
 class TaskDependency(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     source_task_id: int = Field(foreign_key="task.id")
     target_task_id: int = Field(foreign_key="task.id")
-    type: str = Field(default="blocks") # How source relates to target
+    type: str = Field(default="blocks")
     source_handle: Optional[str] = None
     target_handle: Optional[str] = None
 
@@ -44,6 +47,7 @@ class ActivityEvent(SQLModel, table=True):
     project_id: Optional[str] = Field(default=None, foreign_key="project.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+
 class ContextEntry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     task_id: int = Field(foreign_key="task.id")
@@ -58,8 +62,9 @@ class ContextEntry(SQLModel, table=True):
     actor: str = Field(default="System")
     source: str = Field(default="system")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    
+
     task: "Task" = Relationship(back_populates="context_entries")
+
 
 class ContextEntryCreate(SQLModel):
     content: str = ""
@@ -71,6 +76,7 @@ class ContextEntryCreate(SQLModel):
     open_questions: Optional[str] = None
     next_step: Optional[str] = None
 
+
 class TaskCreate(SQLModel):
     title: str
     description: Optional[str] = None
@@ -79,6 +85,7 @@ class TaskCreate(SQLModel):
     labels: Optional[str] = None
     project_id: str
 
+
 class TaskUpdate(SQLModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -86,16 +93,17 @@ class TaskUpdate(SQLModel):
     priority: Optional[str] = None
     labels: Optional[str] = None
 
+
 class TaskMemorySummary(SQLModel):
     task_id: int
     task_title: str
     task_status: TaskStatus
     latest_summary: Optional[str] = None
     latest_next_step: Optional[str] = None
-    active_decisions: List[str] = []
-    open_questions: List[str] = []
-    recent_files: List[str] = []
-    recent_entries: List[ContextEntry] = []
+    active_decisions: List[str] = Field(default_factory=list)
+    open_questions: List[str] = Field(default_factory=list)
+    recent_files: List[str] = Field(default_factory=list)
+    recent_entries: List[ContextEntry] = Field(default_factory=list)
 
 
 class RelatedTaskSummary(SQLModel):
@@ -111,25 +119,25 @@ class TaskOperationalState(SQLModel):
     is_blocked: bool = False
     blocked_by_open_count: int = 0
     blocks_open_count: int = 0
-    blocked_by: List[RelatedTaskSummary] = []
-    unblocks: List[RelatedTaskSummary] = []
+    blocked_by: List[RelatedTaskSummary] = Field(default_factory=list)
+    unblocks: List[RelatedTaskSummary] = Field(default_factory=list)
 
 
 class WorkspaceSnapshot(SQLModel):
-    tasks: List["Task"] = []
-    dependencies: List[TaskDependency] = []
-    memory: List[TaskMemorySummary] = []
-    task_states: List[TaskOperationalState] = []
+    tasks: List["Task"] = Field(default_factory=list)
+    dependencies: List[TaskDependency] = Field(default_factory=list)
+    memory: List[TaskMemorySummary] = Field(default_factory=list)
+    task_states: List[TaskOperationalState] = Field(default_factory=list)
 
 
 class ResumePacket(SQLModel):
     task: "Task"
     task_state: TaskOperationalState
     memory: TaskMemorySummary
-    blocked_by: List[RelatedTaskSummary] = []
-    unblocks: List[RelatedTaskSummary] = []
+    blocked_by: List[RelatedTaskSummary] = Field(default_factory=list)
+    unblocks: List[RelatedTaskSummary] = Field(default_factory=list)
     handoff_complete: bool = False
-    recommended_next_actions: List[str] = []
+    recommended_next_actions: List[str] = Field(default_factory=list)
     agent_brief: str
 
 
@@ -143,7 +151,7 @@ class ReadyQueueItem(SQLModel):
     latest_summary: Optional[str] = None
     latest_next_step: Optional[str] = None
     blocks_open_count: int = 0
-    recent_files: List[str] = []
+    recent_files: List[str] = Field(default_factory=list)
     handoff_complete: bool = False
 
 
@@ -188,10 +196,10 @@ class ControlCenterSnapshot(SQLModel):
     blocked_count: int = 0
     handoff_gap_count: int = 0
     handoffs_last_7_days: int = 0
-    ready_queue: List[ReadyQueueItem] = []
-    attention_tasks: List[AttentionTaskItem] = []
-    latest_handoffs: List[HandoffPulseItem] = []
-    server: MCPServerStatus = MCPServerStatus()
+    ready_queue: List[ReadyQueueItem] = Field(default_factory=list)
+    attention_tasks: List[AttentionTaskItem] = Field(default_factory=list)
+    latest_handoffs: List[HandoffPulseItem] = Field(default_factory=list)
+    server: MCPServerStatus = Field(default_factory=MCPServerStatus)
 
 
 class TaskDependencyCreate(SQLModel):
@@ -200,6 +208,7 @@ class TaskDependencyCreate(SQLModel):
     type: str = "blocks"
     source_handle: Optional[str] = None
     target_handle: Optional[str] = None
+
 
 class Task(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -210,5 +219,5 @@ class Task(SQLModel, table=True):
     labels: Optional[str] = None
     project_id: Optional[str] = Field(default=None, foreign_key="project.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     context_entries: List[ContextEntry] = Relationship(back_populates="task")

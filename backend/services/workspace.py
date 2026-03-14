@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from models import (
+from ..domain.models import (
     ContextEntry,
     RelatedTaskSummary,
     ResumePacket,
@@ -51,7 +51,9 @@ def build_memory_summary(task: Task, entries: list[ContextEntry]) -> TaskMemoryS
     )
 
 
-def build_operational_states(tasks: list[Task], dependencies: list[TaskDependency]) -> list[TaskOperationalState]:
+def build_operational_states(
+    tasks: list[Task], dependencies: list[TaskDependency]
+) -> list[TaskOperationalState]:
     task_by_id = {task.id: task for task in tasks if task.id is not None}
     incoming: dict[int, list[TaskDependency]] = defaultdict(list)
     outgoing: dict[int, list[TaskDependency]] = defaultdict(list)
@@ -150,18 +152,30 @@ def build_resume_packet(
 
     recommended_next_actions: list[str] = []
     if not memory.latest_summary:
-        recommended_next_actions.append("Review the task description and latest context logs before making changes.")
+        recommended_next_actions.append(
+            "Review the task description and latest context logs before making changes."
+        )
     if state.is_blocked and state.blocked_by:
         blocker_titles = ", ".join(item.task_title for item in state.blocked_by[:3])
-        recommended_next_actions.append(f"Resolve or verify blockers from: {blocker_titles}.")
+        recommended_next_actions.append(
+            f"Resolve or verify blockers from: {blocker_titles}."
+        )
     if memory.latest_next_step:
-        recommended_next_actions.append(f"Start with the recorded next step: {memory.latest_next_step}")
+        recommended_next_actions.append(
+            f"Start with the recorded next step: {memory.latest_next_step}"
+        )
     else:
-        recommended_next_actions.append("Capture a concrete next step before handing this task to another agent.")
+        recommended_next_actions.append(
+            "Capture a concrete next step before handing this task to another agent."
+        )
     if memory.open_questions:
-        recommended_next_actions.append(f"Answer the top open question: {memory.open_questions[0]}")
+        recommended_next_actions.append(
+            f"Answer the top open question: {memory.open_questions[0]}"
+        )
     elif not state.is_blocked:
-        recommended_next_actions.append("Confirm the first implementation step and write a fresh handoff once progress is made.")
+        recommended_next_actions.append(
+            "Confirm the first implementation step and write a fresh handoff once progress is made."
+        )
 
     handoff_complete = bool(memory.latest_summary and memory.latest_next_step)
     brief_sections = [

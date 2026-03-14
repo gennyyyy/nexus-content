@@ -1,4 +1,20 @@
-export const API_BASE = "http://127.0.0.1:8000/api";
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+
+async function handleResponse(res: Response, defaultMessage: string) {
+    if (!res.ok) {
+        let errorMessage = defaultMessage;
+        try {
+            const errData = await res.json();
+            errorMessage = errData.detail || errData.message || defaultMessage;
+        } catch {
+            // Ignore parse errors
+        }
+        throw new Error(errorMessage);
+    }
+    // Return void for 204 No Content
+    if (res.status === 204) return undefined;
+    return res.json();
+}
 
 export interface Project {
     id: string;
@@ -168,8 +184,7 @@ export interface ActivityEvent {
 export async function fetchTasks(projectId?: string | null): Promise<Task[]> {
     const url = projectId ? `${API_BASE}/tasks?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/tasks`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch tasks");
-    return res.json();
+    return handleResponse(res, "Failed to fetch tasks");
 }
 
 export async function createTask(task: Partial<Task>): Promise<Task> {
@@ -178,7 +193,7 @@ export async function createTask(task: Partial<Task>): Promise<Task> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(task),
     });
-    return res.json();
+    return handleResponse(res, "Request failed");
 }
 
 export async function updateTask(id: number, task: Partial<Task>): Promise<Task> {
@@ -187,20 +202,19 @@ export async function updateTask(id: number, task: Partial<Task>): Promise<Task>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(task),
     });
-    return res.json();
+    return handleResponse(res, "Request failed");
 }
 
 export async function fetchDependencies(): Promise<TaskDependency[]> {
     const res = await fetch(`${API_BASE}/dependencies`);
-    if (!res.ok) throw new Error("Failed to fetch dependencies");
-    return res.json();
+    return handleResponse(res, "Failed to fetch dependencies");
 }
 
 export async function deleteTask(id: number): Promise<void> {
     const res = await fetch(`${API_BASE}/tasks/${id}`, {
         method: "DELETE",
     });
-    if (!res.ok) throw new Error("Failed to delete task");
+    return handleResponse(res, "Failed to delete task");
 }
 
 export async function createDependency(dependency: TaskDependency): Promise<TaskDependency> {
@@ -209,21 +223,19 @@ export async function createDependency(dependency: TaskDependency): Promise<Task
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dependency),
     });
-    if (!res.ok) throw new Error("Failed to create dependency");
-    return res.json();
+    return handleResponse(res, "Failed to create dependency");
 }
 
 export async function deleteDependency(id: number): Promise<void> {
     const res = await fetch(`${API_BASE}/dependencies/${id}`, {
         method: "DELETE",
     });
-    if (!res.ok) throw new Error("Failed to delete dependency");
+    return handleResponse(res, "Failed to delete dependency");
 }
 
 export async function fetchTaskContext(taskId: number): Promise<ContextEntry[]> {
     const res = await fetch(`${API_BASE}/tasks/${taskId}/context`);
-    if (!res.ok) throw new Error("Failed to fetch task context");
-    return res.json();
+    return handleResponse(res, "Failed to fetch task context");
 }
 
 export async function createTaskContext(taskId: number, entry: Partial<ContextEntry>): Promise<ContextEntry> {
@@ -232,26 +244,22 @@ export async function createTaskContext(taskId: number, entry: Partial<ContextEn
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entry),
     });
-    if (!res.ok) throw new Error("Failed to create task context");
-    return res.json();
+    return handleResponse(res, "Failed to create task context");
 }
 
 export async function fetchTaskMemory(taskId: number): Promise<TaskMemorySummary> {
     const res = await fetch(`${API_BASE}/tasks/${taskId}/memory`);
-    if (!res.ok) throw new Error("Failed to fetch task memory");
-    return res.json();
+    return handleResponse(res, "Failed to fetch task memory");
 }
 
 export async function fetchTaskResumePacket(taskId: number): Promise<ResumePacket> {
     const res = await fetch(`${API_BASE}/tasks/${taskId}/resume-packet`);
-    if (!res.ok) throw new Error("Failed to fetch task resume packet");
-    return res.json();
+    return handleResponse(res, "Failed to fetch task resume packet");
 }
 
 export async function fetchProjects(): Promise<Project[]> {
     const res = await fetch(`${API_BASE}/projects`);
-    if (!res.ok) throw new Error("Failed to fetch projects");
-    return res.json();
+    return handleResponse(res, "Failed to fetch projects");
 }
 
 export async function createProject(project: Partial<Project>): Promise<Project> {
@@ -260,35 +268,30 @@ export async function createProject(project: Partial<Project>): Promise<Project>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(project),
     });
-    if (!res.ok) throw new Error("Failed to create project");
-    return res.json();
+    return handleResponse(res, "Failed to create project");
 }
 
 export async function fetchProject(projectId: string): Promise<Project> {
     const res = await fetch(`${API_BASE}/projects/${projectId}`);
-    if (!res.ok) throw new Error("Failed to fetch project");
-    return res.json();
+    return handleResponse(res, "Failed to fetch project");
 }
 
 export async function fetchMemoryOverview(projectId?: string | null): Promise<TaskMemorySummary[]> {
     const url = projectId ? `${API_BASE}/memory?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/memory`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch memory overview");
-    return res.json();
+    return handleResponse(res, "Failed to fetch memory overview");
 }
 
 export async function fetchWorkspaceSnapshot(projectId?: string | null): Promise<WorkspaceSnapshot> {
     const url = projectId ? `${API_BASE}/workspace?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/workspace`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch workspace snapshot");
-    return res.json();
+    return handleResponse(res, "Failed to fetch workspace snapshot");
 }
 
 export async function fetchControlCenterSnapshot(projectId?: string | null): Promise<ControlCenterSnapshot> {
     const url = projectId ? `${API_BASE}/control-center?project_id=${encodeURIComponent(projectId)}` : `${API_BASE}/control-center`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch control center snapshot");
-    return res.json();
+    return handleResponse(res, "Failed to fetch control center snapshot");
 }
 
 export async function fetchActivityFeed(limit = 60, projectId?: string | null): Promise<ActivityEvent[]> {
@@ -296,12 +299,10 @@ export async function fetchActivityFeed(limit = 60, projectId?: string | null): 
         ? `${API_BASE}/activity?limit=${limit}&project_id=${encodeURIComponent(projectId)}` 
         : `${API_BASE}/activity?limit=${limit}`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to fetch activity feed");
-    return res.json();
+    return handleResponse(res, "Failed to fetch activity feed");
 }
 
 export async function fetchTaskActivity(taskId: number): Promise<ActivityEvent[]> {
     const res = await fetch(`${API_BASE}/tasks/${taskId}/activity`);
-    if (!res.ok) throw new Error("Failed to fetch task activity");
-    return res.json();
+    return handleResponse(res, "Failed to fetch task activity");
 }

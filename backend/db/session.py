@@ -1,8 +1,11 @@
+from pathlib import Path
+
 from sqlalchemy import inspect, text
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, Session, create_engine
 
 sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+sqlite_file_path = Path(__file__).resolve().parents[1] / sqlite_file_name
+sqlite_url = f"sqlite:///{sqlite_file_path.as_posix()}"
 
 connect_args = {"check_same_thread": False}
 engine = create_engine(sqlite_url, echo=False, connect_args=connect_args)
@@ -40,7 +43,9 @@ def run_dev_migrations():
     if "contextentry" not in inspector.get_table_names():
         context_columns = set()
     else:
-        context_columns = {column["name"] for column in inspector.get_columns("contextentry")}
+        context_columns = {
+            column["name"] for column in inspector.get_columns("contextentry")
+        }
 
     if "task" not in inspector.get_table_names():
         task_columns = set()
@@ -50,12 +55,16 @@ def run_dev_migrations():
     if "activityevent" not in inspector.get_table_names():
         activity_columns = set()
     else:
-        activity_columns = {column["name"] for column in inspector.get_columns("activityevent")}
+        activity_columns = {
+            column["name"] for column in inspector.get_columns("activityevent")
+        }
 
     if "taskdependency" not in inspector.get_table_names():
         task_dependency_columns = set()
     else:
-        task_dependency_columns = {column["name"] for column in inspector.get_columns("taskdependency")}
+        task_dependency_columns = {
+            column["name"] for column in inspector.get_columns("taskdependency")
+        }
 
     with engine.begin() as connection:
         for column_name, statement in CONTEXT_ENTRY_MIGRATIONS.items():
@@ -71,10 +80,19 @@ def run_dev_migrations():
             if column_name not in task_dependency_columns:
                 connection.execute(text(statement))
 
+
 def create_db_and_tables():
-    from models import Task, TaskDependency, ContextEntry, Project, ActivityEvent # Ensure models are loaded
+    from ..domain.models import (
+        ActivityEvent,
+        ContextEntry,
+        Project,
+        Task,
+        TaskDependency,
+    )  # noqa: F401
+
     SQLModel.metadata.create_all(engine)
     run_dev_migrations()
+
 
 def get_session():
     with Session(engine) as session:

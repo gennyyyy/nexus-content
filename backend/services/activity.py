@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
+from typing import Any, cast
 
 from sqlmodel import Session, select
 
-from models import (
+from ..domain.models import (
     ActivityEvent,
     AttentionTaskItem,
     ContextEntry,
@@ -13,7 +14,7 @@ from models import (
     Task,
     TaskDependency,
 )
-from workspace import build_memory_summary, build_operational_states
+from .workspace import build_memory_summary, build_operational_states
 
 PRIORITY_ORDER = {
     "critical": 0,
@@ -81,27 +82,32 @@ def record_activity(
 
 
 def seed_activity_events(session: Session) -> None:
-    # Ensure default project exists
     default_project = session.get(Project, "default")
     if not default_project:
-        default_project = Project(id="default", name="Default Project", description="Auto-created default project")
+        default_project = Project(
+            id="default",
+            name="Default Project",
+            description="Auto-created default project",
+        )
         session.add(default_project)
         session.commit()
-    
-    # Assign existing tasks to default project if not assigned
-    tasks_without_project = session.exec(select(Task).where(Task.project_id == None)).all()
+
+    task_rows = session.exec(select(Task).where(Task.project_id.is_(None))).all()
+    tasks_without_project = [task for task in task_rows]
     if tasks_without_project:
         for task in tasks_without_project:
             task.project_id = "default"
             session.add(task)
         session.commit()
-    
+
     existing_event = session.exec(select(ActivityEvent.id).limit(1)).first()
     if existing_event is not None:
         return
 
-    tasks = session.exec(select(Task)).all()
-    entries = session.exec(select(ContextEntry)).all()
+    task_rows = session.exec(select(Task)).all()
+    entry_rows = session.exec(select(ContextEntry)).all()
+    tasks = [task for task in task_rows]
+    entries = [entry for entry in entry_rows]
     task_by_id = {task.id: task for task in tasks if task.id is not None}
 
     events: list[ActivityEvent] = []
@@ -115,7 +121,7 @@ def seed_activity_events(session: Session) -> None:
                 task_id=task.id,
                 task_title=task.title,
                 title=f'Created task "{task.title}"',
-                summary=f'Started in {status_label(task.status)} with {normalize_priority(task.priority)} priority.',
+                summary=f"Started in {status_label(task.status)} with {normalize_priority(task.priority)} priority.",
                 actor="System",
                 source="system",
                 project_id=task.project_id,
@@ -129,7 +135,9 @@ def seed_activity_events(session: Session) -> None:
             continue
         is_handoff = entry.entry_type == "handoff"
         summary = truncate(entry.summary or entry.content)
-        body = "Recorded a structured handoff." if is_handoff else "Added context entry."
+        body = (
+            "Recorded a structured handoff." if is_handoff else "Added context entry."
+        )
         if summary:
             body = f"{body} {summary}"
         events.append(
@@ -156,12 +164,37 @@ def seed_activity_events(session: Session) -> None:
     session.commit()
 
 
-def build_activity_feed(session: Session, limit: int = 60, project_id: str | None = None) -> list[ActivityEvent]:
+def build_activity_feed(
+    session: Session, limit: int = 60, project_id: str | None = None
+) -> list[ActivityEvent]:
     safe_limit = max(1, min(limit, 200))
-    statement = select(ActivityEvent).order_by(ActivityEvent.created_at.desc(), ActivityEvent.id.desc()).limit(safe_limit)
+    created_at_column = cast(Any, ActivityEvent.created_at)
+    id_column = cast(Any, ActivityEvent.id)
+    statement = (
+        select(ActivityEvent)
+        .order_by(created_at_column.desc(), id_column.desc())
+        .limit(safe_limit)
+    )
     if project_id:
         statement = statement.where(ActivityEvent.project_id == project_id)
-    return session.exec(statement).all()
+    rows = session.exec(statement).all()
+    return [event for event in rows]
+
+
+def build_task_activity_feed(
+    session: Session, task_id: int, limit: int = 60
+) -> list[ActivityEvent]:
+    safe_limit = max(1, min(limit, 200))
+    created_at_column = cast(Any, ActivityEvent.created_at)
+    id_column = cast(Any, ActivityEvent.id)
+    statement = (
+        select(ActivityEvent)
+        .where(ActivityEvent.task_id == task_id)
+        .order_by(created_at_column.desc(), id_column.desc())
+        .limit(safe_limit)
+    )
+    rows = session.exec(statement).all()
+    return [event for event in rows]
 
 
 def build_control_center_snapshot(
@@ -179,8 +212,7 @@ def build_control_center_snapshot(
         if task.id is not None
     }
     operational_by_task = {
-        state.task_id: state
-        for state in build_operational_states(tasks, dependencies)
+        state.task_id: state for state in build_operational_states(tasks, dependencies)
     }
 
     ready_queue: list[ReadyQueueItem] = []
@@ -198,9 +230,15 @@ def build_control_center_snapshot(
             key=lambda entry: entry.timestamp,
             reverse=True,
         )
-        handoff_complete = bool(memory and memory.latest_summary and memory.latest_next_step)
-        missing_summary = task.status != "done" and not (memory and memory.latest_summary)
-        missing_next_step = task.status != "done" and not (memory and memory.latest_next_step)
+        handoff_complete = bool(
+            memory and memory.latest_summary and memory.latest_next_step
+        )
+        missing_summary = task.status != "done" and not (
+            memory and memory.latest_summary
+        )
+        missing_next_step = task.status != "done" and not (
+            memory and memory.latest_next_step
+        )
 
         if state and state.is_ready:
             ready_queue.append(
@@ -236,7 +274,9 @@ def build_control_center_snapshot(
                 )
             )
 
-        latest_handoff = next((entry for entry in recent_entries if entry.entry_type == "handoff"), None)
+        latest_handoff = next(
+            (entry for entry in recent_entries if entry.entry_type == "handoff"), None
+        )
         if latest_handoff:
             latest_handoffs.append(
                 HandoffPulseItem(
@@ -277,7 +317,9 @@ def build_control_center_snapshot(
         in_progress_count=sum(1 for task in tasks if task.status == "in_progress"),
         done_count=sum(1 for task in tasks if task.status == "done"),
         ready_count=sum(1 for state in operational_by_task.values() if state.is_ready),
-        blocked_count=sum(1 for state in operational_by_task.values() if state.is_blocked),
+        blocked_count=sum(
+            1 for state in operational_by_task.values() if state.is_blocked
+        ),
         handoff_gap_count=sum(
             1
             for task in tasks

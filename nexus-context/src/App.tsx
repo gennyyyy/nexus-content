@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -8,11 +9,30 @@ import { ControlCenter } from "./pages/ControlCenter";
 import { ProjectSelector } from "./pages/ProjectSelector";
 import { CommandPalette } from "./components/CommandPalette";
 
+function GlobalShortcuts() {
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                if (
+                    document.activeElement instanceof HTMLInputElement ||
+                    document.activeElement instanceof HTMLTextAreaElement
+                ) {
+                    document.activeElement.blur();
+                }
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
+    return null;
+}
+
 export default function App() {
     return (
         <ErrorBoundary>
             <ToastProvider>
                 <BrowserRouter>
+                    <GlobalShortcuts />
                     <CommandPalette />
                     <Routes>
                         <Route path="/" element={<Navigate to="/projects" replace />} />

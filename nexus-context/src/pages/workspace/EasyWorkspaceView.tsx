@@ -112,9 +112,10 @@ export function EasyWorkspaceView({
                                                 {...provided.droppableProps}
                                                 className={`nexus-scroll min-h-0 flex-1 space-y-2 overflow-y-auto p-3 transition-colors duration-200 ${snapshot.isDraggingOver ? "bg-zinc-900/35" : ""}`}
                                             >
-                                                {columnTasks.map((task, index) => {
-                                                    const memory = task.id ? memoryByTask.get(task.id) : undefined;
-                                                    const opState = task.id ? operationalByTask.get(task.id) : undefined;
+                                                <AnimatePresence mode="popLayout">
+                                                    {columnTasks.map((task, index) => {
+                                                        const memory = task.id ? memoryByTask.get(task.id) : undefined;
+                                                        const opState = task.id ? operationalByTask.get(task.id) : undefined;
                                                     const flow = task.id ? getFlowBadge(task, opState) : null;
 
                                                     const isHot = task.priority === "critical" || (opState?.blocked_by_open_count ?? 0) >= 2;
@@ -123,7 +124,12 @@ export function EasyWorkspaceView({
                                                     return (
                                                         <Draggable key={String(task.id)} draggableId={String(task.id)} index={index}>
                                                             {(dragProvided, dragSnapshot) => (
-                                                                <div
+                                                                <motion.div
+                                                                    layout
+                                                                    initial={{ opacity: 0, scale: 0.95 }}
+                                                                    animate={{ opacity: 1, scale: 1 }}
+                                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                                    transition={{ duration: 0.2 }}
                                                                     ref={dragProvided.innerRef}
                                                                     {...dragProvided.draggableProps}
                                                                     className={`border bg-zinc-900/40 backdrop-blur-md p-2.5 transition-all duration-200 ${dragSnapshot.isDragging ? "border-sky-400/45 shadow-[0_16px_40px_rgba(2,6,23,0.5)]" : `hover:border-white/20 hover:bg-zinc-900/60 ${hotClass}`}`}
@@ -167,11 +173,12 @@ export function EasyWorkspaceView({
                                                                             </div>
                                                                         </button>
                                                                     </div>
-                                                                </div>
+                                                                </motion.div>
                                                             )}
                                                         </Draggable>
                                                     );
                                                 })}
+                                                </AnimatePresence>
                                                 {provided.placeholder}
                                                 {columnTasks.length === 0 ? <EmptyState message="No tasks in this lane." /> : null}
                                             </div>

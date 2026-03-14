@@ -35,11 +35,17 @@ The frontend is designed with a **"High-Density Dashboard"** philosophy. It prio
 *   **The Memory Hub**: A specialized analytics interface. It aggregates the "Thinking Logs" of all MCP-enabled agents, providing a historical audit trail of *why* certain technical decisions were made.
 
 ### 3.2 The Backend Infrastructure (FastAPI / SQLModel)
-The backend acts as the "Source of Truth" for both human and machine agents.
+The backend is organized using a modular, service-oriented architecture, acting as the "Source of Truth" for both human and machine agents.
 
-*   **FastAPI REST Layer**: Serves the React frontend with a sub-100ms response time, ensuring the graph feels snappy.
-*   **SQLModel (SQLite Partitioning)**: Uses a type-safe ORM to manage complex relationships between `Tasks`, `Dependencies`, and `ContextEntries`.
-*   **Business Logic Layer**: Located in `workspace.py`, this layer performs the recursive graph traversal to determine task readiness and calculate project velocity.
+*   **API Layer (`backend/api/`)**: Structured using FastAPI routers. It handles request validation, dependency injection, and routes requests to the appropriate services.
+    *   `routers/`: Feature-specific endpoints for `tasks`, `projects`, and `views`.
+*   **Service Layer (`backend/services/`)**: Contains the core business logic. Each service is responsible for a specific domain.
+    *   `workspace.py`: Recursive graph traversal, task readiness logic, and workspace state management.
+    *   `tasks.py` & `projects.py`: CRUD operations and complex state transitions.
+    *   `activity.py` & `context.py`: Management of event streams and the AI handoff lifecycle.
+*   **Domain Models (`backend/domain/models.py`)**: Centralized SQLModel definitions for `Tasks`, `Project`, `ContextEntry`, and complex response schemas like `ResumePacket` and `ControlCenterSnapshot`.
+*   **Integration Layer (`backend/integrations/`)**: Houses the **Model Context Protocol (MCP)** server implementation, bridging the internal state to standardized AI tools.
+*   **Database & Session (`backend/db/`)**: Manages the SQLAlchemy/SQLModel engine and session lifecycle, utilizing SQLite for lightweight, local-first persistence.
 
 ---
 

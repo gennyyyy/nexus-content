@@ -55,7 +55,7 @@ Point your MCP client (like Claude Desktop or MCP Inspector) to:
 
 ## Documentation
 - [Implementation Plan](Plan.md) - Technical overview for AI agents.
-- [Database Models](backend/models.py) - SQLite schema definitions.
+- [Database Models](backend/domain/models.py) - SQLite schema definitions.
 - [Discord Bot Guide](discord-bot/README.md) - Architecture and command reference for channel/project assistant flows.
 
 ## License

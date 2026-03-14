@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useDeferredValue } from "react";
 import type { Task, TaskMemorySummary, TaskOperationalState } from "../../../lib/api";
 import { sortTasks } from "../utils";
 import type { TaskBuckets, WorkspaceCounts } from "../types";
@@ -16,6 +16,9 @@ export function useWorkspaceFilters(
     const [operationalFilter, setOperationalFilter] = useState<"all" | "ready" | "blocked" | "active">("all");
     const [hideDone, setHideDone] = useState(false);
 
+    // Defer the search query to keep the input responsive during typing
+    const deferredSearch = useDeferredValue(search);
+
     const visibleTasks = useMemo(() => {
         const filtered = tasks.filter((task) => {
             const operational = task.id ? operationalByTask.get(task.id) : undefined;
@@ -26,9 +29,9 @@ export function useWorkspaceFilters(
             if (operationalFilter === "ready" && !operational?.is_ready) return false;
             if (operationalFilter === "blocked" && !operational?.is_blocked) return false;
             if (operationalFilter === "active" && task.status !== "in_progress") return false;
-            if (!search.trim()) return true;
+            if (!deferredSearch.trim()) return true;
 
-            const query = search.toLowerCase();
+            const query = deferredSearch.toLowerCase();
             return (
                 task.title.toLowerCase().includes(query) ||
                 (task.description || "").toLowerCase().includes(query) ||
@@ -38,7 +41,7 @@ export function useWorkspaceFilters(
         });
 
         return sortTasks(filtered);
-    }, [hideDone, memoryByTask, operationalByTask, operationalFilter, search, statusFilter, tasks]);
+    }, [hideDone, memoryByTask, operationalByTask, operationalFilter, deferredSearch, statusFilter, tasks]);
 
     const tasksByStatus = useMemo<TaskBuckets>(() => ({
         todo: visibleTasks.filter((task) => task.status === "todo"),

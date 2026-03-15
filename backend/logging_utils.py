@@ -55,12 +55,21 @@ async def log_request(
     path = build_request_path(request, settings.request_logging_include_query_string)
     client_host = request.client.host if request.client else "unknown"
     request_id = ensure_request_id(request, settings)
+    project_id = request.query_params.get("project_id")
 
     try:
         response = await call_next(request)
     except Exception:
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
         request_telemetry.record(request_id, path, 500, True, duration_ms)
+        request_telemetry.emit_event(
+            event_type="request.failed",
+            project_id=project_id,
+            request_id=request_id,
+            path=path,
+            method=request.method,
+            detail="Unhandled server exception",
+        )
         logger.exception(
             "request_failed request_id=%s method=%s path=%s client=%s duration_ms=%s",
             request_id,

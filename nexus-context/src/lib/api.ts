@@ -12,6 +12,10 @@ import type {
     ControlCenterSnapshot,
     OperatorMetrics,
     Project,
+    ProjectBackupResult,
+    ProjectExportBundle,
+    ProjectImportRequest,
+    ProjectImportResult,
     ProjectMembership,
     ResumePacket,
     Task,
@@ -188,6 +192,31 @@ export async function fetchProject(projectId: string): Promise<Project> {
     return handleResponse(res, "Failed to fetch project");
 }
 
+export async function exportProject(projectId: string): Promise<ProjectExportBundle> {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/export`);
+    return handleResponse(res, "Failed to export project");
+}
+
+export async function importProject(
+    payload: ProjectImportRequest,
+): Promise<ProjectImportResult> {
+    const res = await apiFetch(`${API_BASE}/projects/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    return handleResponse(res, "Failed to import project");
+}
+
+export async function backupProject(
+    projectId: string,
+): Promise<ProjectBackupResult> {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/backup`, {
+        method: "POST",
+    });
+    return handleResponse(res, "Failed to back up project");
+}
+
 export async function updateProjectArchiveState(
     projectId: string,
     archived: boolean,
@@ -217,6 +246,19 @@ export async function upsertProjectMembership(
         body: JSON.stringify(membership),
     });
     return handleResponse(res, "Failed to update project membership");
+}
+
+export async function deleteProjectMembership(
+    projectId: string,
+    userId: string,
+): Promise<void> {
+    const res = await apiFetch(
+        `${API_BASE}/projects/${projectId}/memberships/${encodeURIComponent(userId)}`,
+        {
+            method: "DELETE",
+        },
+    );
+    return handleResponse(res, "Failed to remove project membership");
 }
 
 export async function updateTaskArchiveState(

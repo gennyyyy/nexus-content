@@ -1,5 +1,11 @@
 import { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+    BrowserRouter,
+    MemoryRouter,
+    Navigate,
+    Route,
+    Routes,
+} from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/ToastProvider";
@@ -37,25 +43,45 @@ function AppPageSkeleton() {
 }
 
 export default function App() {
+    return <AppWithRouter />;
+}
+
+function AppRoutes() {
+    return (
+        <>
+            <GlobalShortcuts />
+            <Suspense fallback={<AppPageSkeleton />}>
+                <CommandPalette />
+                <Routes>
+                    <Route path="/" element={<Navigate to="/projects" replace />} />
+                    <Route path="/projects" element={<ProjectSelector />} />
+                    <Route path="/projects/:projectId" element={<Layout />}>
+                        <Route index element={<Navigate to="control-center" replace />} />
+                        <Route path="control-center" element={<ControlCenter />} />
+                        <Route path="workspace" element={<Workspace />} />
+                        <Route path="memory" element={<MemoryHub />} />
+                    </Route>
+                </Routes>
+            </Suspense>
+        </>
+    );
+}
+
+export function AppWithRouter({
+    useMemoryRouter = false,
+    initialEntries,
+}: {
+    useMemoryRouter?: boolean;
+    initialEntries?: string[];
+}) {
+    const Router = useMemoryRouter ? MemoryRouter : BrowserRouter;
+
     return (
         <ErrorBoundary>
             <ToastProvider>
-                <BrowserRouter>
-                    <GlobalShortcuts />
-                    <Suspense fallback={<AppPageSkeleton />}>
-                        <CommandPalette />
-                        <Routes>
-                            <Route path="/" element={<Navigate to="/projects" replace />} />
-                            <Route path="/projects" element={<ProjectSelector />} />
-                            <Route path="/projects/:projectId" element={<Layout />}>
-                                <Route index element={<Navigate to="control-center" replace />} />
-                                <Route path="control-center" element={<ControlCenter />} />
-                                <Route path="workspace" element={<Workspace />} />
-                                <Route path="memory" element={<MemoryHub />} />
-                            </Route>
-                        </Routes>
-                    </Suspense>
-                </BrowserRouter>
+                <Router {...(useMemoryRouter ? { initialEntries } : {})}>
+                    <AppRoutes />
+                </Router>
             </ToastProvider>
         </ErrorBoundary>
     );

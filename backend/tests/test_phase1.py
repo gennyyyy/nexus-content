@@ -2,9 +2,11 @@ import asyncio
 import importlib
 import json
 import logging
+import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -320,13 +322,31 @@ class BackendPhase1Tests(unittest.TestCase):
         self.assertEqual(payload["telemetry_window"]["recent_request_limit"], 12)
 
     def test_request_logging_emits_structured_message(self):
+        get_settings.cache_clear()
         logger = logging.getLogger("nexus.requests")
+        response = None
 
-        with self.assertLogs(logger, level="INFO") as captured:
-            response = self.client.get(
-                "/health", headers={"X-Request-ID": "test-request-id"}
-            )
+        with mock.patch.dict(
+            os.environ,
+            {
+                "NEXUS_REQUEST_LOGGING_ENABLED": "true",
+                "NEXUS_REQUEST_LOG_LEVEL": "INFO",
+            },
+            clear=False,
+        ):
+            get_settings.cache_clear()
+            local_client_context = TestClient(app_module.create_app())
+            local_client = local_client_context.__enter__()
+            try:
+                with self.assertLogs(logger, level="INFO") as captured:
+                    response = local_client.get(
+                        "/health", headers={"X-Request-ID": "test-request-id"}
+                    )
+            finally:
+                local_client_context.__exit__(None, None, None)
+                local_client.close()
 
+        assert response is not None
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.headers.get("X-Request-ID"), "test-request-id")
         self.assertTrue(
@@ -386,6 +406,53 @@ class BackendPhase1Tests(unittest.TestCase):
         )
         memberships = membership_list_response.json()
         self.assertTrue(any(item["user_id"] == "collab" for item in memberships))
+
+    def test_project_membership_can_be_removed(self):
+        owner_headers = self.auth_headers("owner")
+        collaborator_headers = self.auth_headers("collab")
+
+        create_response = self.client.post(
+            "/api/projects",
+            json={"id": "alpha", "name": "Alpha"},
+            headers=owner_headers,
+        )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
+
+        membership_response = self.client.post(
+            "/api/projects/alpha/memberships",
+            json={"user_id": "collab", "role": "member"},
+            headers=owner_headers,
+        )
+        self.assertEqual(membership_response.status_code, 200, membership_response.text)
+
+        delete_response = self.client.delete(
+            "/api/projects/alpha/memberships/collab",
+            headers=owner_headers,
+        )
+        self.assertEqual(delete_response.status_code, 200, delete_response.text)
+
+        access_response = self.client.get(
+            "/api/projects/alpha",
+            headers=collaborator_headers,
+        )
+        self.assertEqual(access_response.status_code, 403, access_response.text)
+
+    def test_project_creator_membership_cannot_be_removed(self):
+        owner_headers = self.auth_headers("owner")
+
+        create_response = self.client.post(
+            "/api/projects",
+            json={"id": "alpha", "name": "Alpha"},
+            headers=owner_headers,
+        )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
+
+        delete_response = self.client.delete(
+            "/api/projects/alpha/memberships/owner",
+            headers=owner_headers,
+        )
+        self.assertEqual(delete_response.status_code, 400, delete_response.text)
+        self.assertIn("creator", delete_response.json()["detail"].lower())
 
     def test_admin_can_access_any_project(self):
         owner_headers = self.auth_headers("owner")

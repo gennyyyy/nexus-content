@@ -16,6 +16,7 @@ from ..domain.models import (
     TaskDependency,
 )
 from ..settings import get_settings
+from ..telemetry import request_telemetry
 from .workspace import build_memory_summary, build_operational_states
 
 PRIORITY_ORDER = {
@@ -80,6 +81,11 @@ def record_activity(
         created_at=created_at or datetime.now(timezone.utc).replace(tzinfo=None),
     )
     session.add(event)
+    request_telemetry.emit_event(
+        event_type="domain.updated",
+        project_id=project_id,
+        detail=f"{event_type}: {truncate(summary, 96)}",
+    )
     return event
 
 

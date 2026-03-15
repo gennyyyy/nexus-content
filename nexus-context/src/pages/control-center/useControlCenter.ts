@@ -13,6 +13,7 @@ import {
     type Task,
 } from "../../lib/api";
 import { appQueryKeys } from "../../lib/queryKeys";
+import { useLiveUpdates } from "../../lib/live-updates";
 import { useControlCenterMetrics } from "./useControlCenterMetrics";
 
 type TaskPreviewSource = ReadyQueueItem | AttentionTaskItem | HandoffPulseItem;
@@ -50,6 +51,8 @@ function buildTaskPreview(source: TaskPreviewSource): Task {
 }
 
 export function useControlCenter(projectId?: string) {
+    useLiveUpdates(projectId);
+
     const [selectedReadyTaskId, setSelectedReadyTaskId] = useState<number | null>(null);
     const [contextTask, setContextTask] = useState<Task | null>(null);
     const [activitySearch, setActivitySearch] = useState("");
@@ -58,13 +61,11 @@ export function useControlCenter(projectId?: string) {
     const snapshotQuery = useQuery<ControlCenterSnapshot>({
         queryKey: appQueryKeys.controlCenter.snapshot(projectId),
         queryFn: () => fetchControlCenterSnapshot(projectId),
-        refetchInterval: 30000,
     });
 
     const activityQuery = useQuery<ActivityEvent[]>({
         queryKey: appQueryKeys.controlCenter.activity(projectId, 60, deferredActivitySearch),
         queryFn: () => fetchActivityFeed(60, projectId, deferredActivitySearch),
-        refetchInterval: 30000,
     });
 
     const snapshot = snapshotQuery.data ?? null;

@@ -4,16 +4,24 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Archive, ArchiveRestore, FolderGit2, Shield, UserRound, X, Plus } from "lucide-react";
 import {
     createProject,
+    backupProject,
+    deleteProjectMembership,
+    exportProject,
     fetchProjectMemberships,
     fetchProjectsWithOptions,
     fetchTasksWithOptions,
+    importProject,
     upsertProjectMembership,
     updateProjectArchiveState,
     updateTaskArchiveState,
+    type ProjectImportRequest,
     type Project,
+    type ProjectBackupResult,
+    type ProjectExportBundle,
     type ProjectMembership,
     type Task,
 } from "../lib/api";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { useToast } from "./toast-context";
 import { useUserSession } from "./user-session-context";
 import type { UserRole } from "../lib/user-session";
@@ -43,6 +51,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [busyProjectId, setBusyProjectId] = useState<string | null>(null);
     const [busyTaskId, setBusyTaskId] = useState<number | null>(null);
     const [busyMembershipUserId, setBusyMembershipUserId] = useState<string | null>(null);
+    const [membershipRemovalTarget, setMembershipRemovalTarget] = useState<ProjectMembership | null>(null);
+    const [isDataOpBusy, setIsDataOpBusy] = useState(false);
+    const [lastBackup, setLastBackup] = useState<ProjectBackupResult | null>(null);
+    const [importDraft, setImportDraft] = useState("");
+    const [exportPreview, setExportPreview] = useState<ProjectExportBundle | null>(null);
     const navigate = useNavigate();
     const { projectId } = useParams();
     const { session, updateSession, resetSession } = useUserSession();
@@ -273,6 +286,98 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
     }
 
+    async function handleRemoveMembership() {
+        if (!projectId || !membershipRemovalTarget) return;
+
+        setBusyMembershipUserId(membershipRemovalTarget.user_id);
+        try {
+            await deleteProjectMembership(projectId, membershipRemovalTarget.user_id);
+            toast(
+                `Removed access for ${membershipRemovalTarget.user_id}.`,
+                "success",
+            );
+            setMembershipRemovalTarget(null);
+            await refreshCaches();
+            await loadProjects();
+        } catch (error) {
+            toast(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to remove project membership",
+                "error",
+            );
+        } finally {
+            setBusyMembershipUserId(null);
+        }
+    }
+
+    async function handleExportProject() {
+        if (!projectId) return;
+        setIsDataOpBusy(true);
+        try {
+            const bundle = await exportProject(projectId);
+            setExportPreview(bundle);
+            if (typeof window !== "undefined") {
+                window.navigator.clipboard?.writeText(
+                    JSON.stringify(bundle, null, 2),
+                ).catch(() => undefined);
+            }
+            toast(`Exported project "${bundle.project.name}"`, "success");
+        } catch (error) {
+            toast(
+                error instanceof Error ? error.message : "Failed to export project",
+                "error",
+            );
+        } finally {
+            setIsDataOpBusy(false);
+        }
+    }
+
+    async function handleBackupProject() {
+        if (!projectId) return;
+        setIsDataOpBusy(true);
+        try {
+            const backup = await backupProject(projectId);
+            setLastBackup(backup);
+            toast(`Created backup ${backup.backup_file}`, "success");
+        } catch (error) {
+            toast(
+                error instanceof Error ? error.message : "Failed to create backup",
+                "error",
+            );
+        } finally {
+            setIsDataOpBusy(false);
+        }
+    }
+
+    async function handleImportProject(e: React.FormEvent) {
+        e.preventDefault();
+        setIsDataOpBusy(true);
+        try {
+            const payload = JSON.parse(importDraft) as ProjectImportRequest | ProjectExportBundle;
+            const request: ProjectImportRequest = "bundle" in payload
+                ? payload
+                : {
+                    bundle: payload,
+                    target_project_id: projectId || payload.project.id,
+                    replace_existing: false,
+                    include_memberships: true,
+                };
+            const result = await importProject(request);
+            toast(`Imported project ${result.project_id}`, "success");
+            setImportDraft("");
+            await refreshCaches();
+            await loadProjects();
+        } catch (error) {
+            toast(
+                error instanceof Error ? error.message : "Failed to import project",
+                "error",
+            );
+        } finally {
+            setIsDataOpBusy(false);
+        }
+    }
+
     function handleSwitchProject(id: string) {
         navigate(`/projects/${id}/control-center`);
         onClose();
@@ -498,7 +603,60 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
 
                     {projectId ? (
-                        <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="grid gap-4">
+                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3">
+                                <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                                    <FolderGit2 size={13} className="text-violet-300" />
+                                    Persistence Ops
+                                </div>
+                                <div className="grid gap-3 lg:grid-cols-[auto_auto_minmax(0,1fr)] lg:items-start">
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleExportProject()}
+                                        disabled={isDataOpBusy}
+                                        className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 hover:border-zinc-600 disabled:opacity-50"
+                                    >
+                                        Export Project
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleBackupProject()}
+                                        disabled={isDataOpBusy}
+                                        className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 hover:border-zinc-600 disabled:opacity-50"
+                                    >
+                                        Create Backup
+                                    </button>
+                                    <div className="rounded border border-zinc-800/70 bg-zinc-950/70 px-3 py-2 text-[11px] text-zinc-400">
+                                        {lastBackup
+                                            ? `Latest backup: ${lastBackup.backup_file}`
+                                            : exportPreview
+                                                ? `Exported ${exportPreview.tasks.length} tasks and copied JSON to the clipboard when available.`
+                                                : "Export gives you a full JSON bundle. Backup writes a timestamped file under backend/backups/."}
+                                    </div>
+                                </div>
+                                <form onSubmit={handleImportProject} className="mt-3 space-y-2">
+                                    <label className="block text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                                        Import Bundle JSON
+                                    </label>
+                                    <textarea
+                                        value={importDraft}
+                                        onChange={(event) => setImportDraft(event.target.value)}
+                                        placeholder="Paste a project export bundle or import request JSON here"
+                                        className="min-h-[140px] w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-600 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/50 outline-none transition-all font-mono"
+                                    />
+                                    <div className="flex justify-end">
+                                        <button
+                                            type="submit"
+                                            disabled={!importDraft.trim() || isDataOpBusy}
+                                            className="rounded bg-sky-600/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 transition-colors shadow-lg shadow-sky-900/20 disabled:opacity-50"
+                                        >
+                                            Import Project
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div className="grid gap-4 lg:grid-cols-2">
                             <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3">
                                 <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                                     <Shield size={13} className="text-sky-300" />
@@ -614,13 +772,23 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                                             </div>
                                                         </div>
                                                         {canManageMemberships && !isCreator ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleEditMembership(membership)}
-                                                                className="rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[10px] font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                                                            >
-                                                                Edit
-                                                            </button>
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleEditMembership(membership)}
+                                                                    className="rounded border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[10px] font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                                                >
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setMembershipRemovalTarget(membership)}
+                                                                    disabled={busyMembershipUserId === membership.user_id}
+                                                                    className="rounded border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[10px] font-medium text-rose-100 hover:bg-rose-500/15 disabled:opacity-50"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </div>
                                                         ) : null}
                                                     </div>
                                                 </div>
@@ -666,9 +834,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 )}
                             </div>
                         </div>
+                        </div>
                     ) : null}
                 </div>
             </div>
+            <ConfirmDialog
+                open={membershipRemovalTarget != null}
+                title="Remove Project Access"
+                message={membershipRemovalTarget
+                    ? `Remove ${membershipRemovalTarget.user_id} from this project? They will immediately lose access until re-added.`
+                    : ""
+                }
+                confirmLabel="Remove"
+                onConfirm={() => void handleRemoveMembership()}
+                onCancel={() => setMembershipRemovalTarget(null)}
+            />
         </div>,
         document.body
     );

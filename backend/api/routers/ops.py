@@ -1,7 +1,12 @@
+import asyncio
+import json
+
 from fastapi import APIRouter, Request
+from sse_starlette.sse import EventSourceResponse
 
 from ...api.dependencies import SessionDep
 from ...db.session import get_database_url
+from ...domain.models import LiveUpdateEvent
 from ...settings import get_settings
 from ...services.views import get_operator_metrics
 from ...telemetry import request_telemetry
@@ -100,3 +105,48 @@ def read_ops_config() -> dict[str, object]:
         "telemetry_recent_request_limit": settings.telemetry_recent_request_limit,
         "telemetry_path_aggregate_limit": settings.telemetry_path_aggregate_limit,
     }
+
+
+def _serialize_live_event(event: LiveUpdateEvent) -> dict[str, object | None]:
+    return {
+        "sequence": event.sequence,
+        "event_type": event.event_type,
+        "created_at": event.created_at.isoformat(),
+        "project_id": event.project_id,
+        "request_id": event.request_id,
+        "path": event.path,
+        "method": event.method,
+        "detail": event.detail,
+    }
+
+
+@router.get("/events")
+async def stream_live_events(request: Request, project_id: str | None = None):
+    async def event_generator():
+        last_sequence = 0
+
+        while True:
+            if await request.is_disconnected():
+                break
+
+            events = request_telemetry.recent_events(
+                since_sequence=last_sequence,
+                project_id=project_id,
+                limit=20,
+            )
+            if events:
+                for event in events:
+                    last_sequence = max(last_sequence, event.sequence)
+                    yield {
+                        "event": event.event_type,
+                        "data": json.dumps(_serialize_live_event(event)),
+                    }
+            else:
+                yield {
+                    "event": "heartbeat",
+                    "data": json.dumps({"project_id": project_id}),
+                }
+
+            await asyncio.sleep(2)
+
+    return EventSourceResponse(event_generator())

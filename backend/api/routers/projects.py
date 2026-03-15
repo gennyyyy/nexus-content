@@ -10,6 +10,7 @@ from ...domain.models import (
 )
 from ...services.projects import (
     create_project,
+    delete_project_membership,
     get_project,
     list_project_memberships,
     list_projects,
@@ -62,3 +63,14 @@ def upsert_project_membership_endpoint(
     user: UserDep,
 ):
     return upsert_project_membership(session, project_id, membership, user)
+
+
+@router.delete("/{project_id}/memberships/{user_id}")
+def delete_project_membership_endpoint(
+    project_id: str,
+    user_id: str,
+    session: SessionDep,
+    user: UserDep,
+):
+    delete_project_membership(session, project_id, user_id, user)
+    return {"ok": True}

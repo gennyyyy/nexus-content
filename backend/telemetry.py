@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from threading import Lock
+
+from .domain.models import LiveUpdateEvent
 
 
 @dataclass
@@ -60,6 +63,10 @@ class RequestTelemetry:
         self._path_failed_totals: dict[str, int] = {}
         self._path_duration_totals: dict[str, float] = {}
         self._path_max_duration: dict[str, float] = {}
+        self._event_sequence = 0
+        self._live_events: deque[LiveUpdateEvent] = deque(
+            maxlen=max(recent_limit * 4, 24)
+        )
 
     def configure(self, recent_limit: int, path_limit: int) -> None:
         with self._lock:
@@ -69,6 +76,53 @@ class RequestTelemetry:
             self._recent_requests = deque(
                 existing_requests[:recent_limit], maxlen=recent_limit
             )
+            existing_events = list(self._live_events)
+            self._live_events = deque(
+                existing_events[: max(recent_limit * 4, 24)],
+                maxlen=max(recent_limit * 4, 24),
+            )
+
+    def emit_event(
+        self,
+        *,
+        event_type: str,
+        project_id: str | None = None,
+        request_id: str | None = None,
+        path: str | None = None,
+        method: str | None = None,
+        detail: str | None = None,
+    ) -> LiveUpdateEvent:
+        with self._lock:
+            self._event_sequence += 1
+            event = LiveUpdateEvent(
+                sequence=self._event_sequence,
+                event_type=event_type,
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                project_id=project_id,
+                request_id=request_id,
+                path=path,
+                method=method,
+                detail=detail,
+            )
+            self._live_events.appendleft(event)
+            return event
+
+    def recent_events(
+        self,
+        *,
+        since_sequence: int = 0,
+        project_id: str | None = None,
+        limit: int = 20,
+    ) -> list[LiveUpdateEvent]:
+        safe_limit = max(1, min(limit, 100))
+        with self._lock:
+            events = [
+                event
+                for event in self._live_events
+                if event.sequence > since_sequence
+                and (project_id is None or event.project_id in {None, project_id})
+            ]
+            return list(reversed(events[:safe_limit]))
 
     def record(
         self,
@@ -177,7 +231,9 @@ class RequestTelemetry:
             self._snapshot = RequestTelemetrySnapshot()
             self._total_duration_ms = 0.0
             self._max_duration_ms = 0.0
+            self._event_sequence = 0
             self._recent_requests.clear()
+            self._live_events.clear()
             self._path_totals.clear()
             self._path_failed_totals.clear()
             self._path_duration_totals.clear()

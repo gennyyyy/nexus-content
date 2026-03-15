@@ -1,0 +1,4493 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Context-Aware MCP Server",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/projects": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Read Projects",
+        "operationId": "read_projects_api_projects_get",
+        "parameters": [
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Project"
+                  },
+                  "title": "Response Read Projects Api Projects Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Create Project Endpoint",
+        "operationId": "create_project_endpoint_api_projects_post",
+        "parameters": [
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Read Project",
+        "operationId": "read_project_api_projects__project_id__get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/archive": {
+      "patch": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Archive Project Endpoint",
+        "operationId": "archive_project_endpoint_api_projects__project_id__archive_patch",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectArchiveUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/memberships": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Read Project Memberships",
+        "operationId": "read_project_memberships_api_projects__project_id__memberships_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectMembership"
+                  },
+                  "title": "Response Read Project Memberships Api Projects  Project Id  Memberships Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Upsert Project Membership Endpoint",
+        "operationId": "upsert_project_membership_endpoint_api_projects__project_id__memberships_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectMembershipCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMembership"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/memberships/{user_id}": {
+      "delete": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Delete Project Membership Endpoint",
+        "operationId": "delete_project_membership_endpoint_api_projects__project_id__memberships__user_id__delete",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Read Tasks",
+        "operationId": "read_tasks_api_tasks_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Task"
+                  },
+                  "title": "Response Read Tasks Api Tasks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Create Task Endpoint",
+        "operationId": "create_task_endpoint_api_tasks_post",
+        "parameters": [
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}": {
+      "put": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Update Task Endpoint",
+        "operationId": "update_task_endpoint_api_tasks__task_id__put",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Delete Task Endpoint",
+        "operationId": "delete_task_endpoint_api_tasks__task_id__delete",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/archive": {
+      "patch": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Archive Task Endpoint",
+        "operationId": "archive_task_endpoint_api_tasks__task_id__archive_patch",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskArchiveUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/context": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Read Task Context",
+        "operationId": "read_task_context_api_tasks__task_id__context_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContextEntry"
+                  },
+                  "title": "Response Read Task Context Api Tasks  Task Id  Context Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Create Task Context Endpoint",
+        "operationId": "create_task_context_endpoint_api_tasks__task_id__context_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextEntryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/memory": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Read Task Memory",
+        "operationId": "read_task_memory_api_tasks__task_id__memory_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskMemorySummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/resume-packet": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Read Task Resume Packet",
+        "operationId": "read_task_resume_packet_api_tasks__task_id__resume_packet_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumePacket"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/activity": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Read Task Activity",
+        "operationId": "read_task_activity_api_tasks__task_id__activity_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 60,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityEvent"
+                  },
+                  "title": "Response Read Task Activity Api Tasks  Task Id  Activity Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dependencies": {
+      "get": {
+        "tags": [
+          "dependencies"
+        ],
+        "summary": "Read Dependencies",
+        "operationId": "read_dependencies_api_dependencies_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskDependency"
+                  },
+                  "title": "Response Read Dependencies Api Dependencies Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "dependencies"
+        ],
+        "summary": "Create Dependency Endpoint",
+        "operationId": "create_dependency_endpoint_api_dependencies_post",
+        "parameters": [
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskDependencyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDependency"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dependencies/{dependency_id}": {
+      "delete": {
+        "tags": [
+          "dependencies"
+        ],
+        "summary": "Delete Dependency Endpoint",
+        "operationId": "delete_dependency_endpoint_api_dependencies__dependency_id__delete",
+        "parameters": [
+          {
+            "name": "dependency_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Dependency Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memory": {
+      "get": {
+        "tags": [
+          "views"
+        ],
+        "summary": "Read Memory Overview",
+        "operationId": "read_memory_overview_api_memory_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskMemorySummary"
+                  },
+                  "title": "Response Read Memory Overview Api Memory Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/task-states": {
+      "get": {
+        "tags": [
+          "views"
+        ],
+        "summary": "Read Task Operational States",
+        "operationId": "read_task_operational_states_api_task_states_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOperationalState"
+                  },
+                  "title": "Response Read Task Operational States Api Task States Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace": {
+      "get": {
+        "tags": [
+          "views"
+        ],
+        "summary": "Read Workspace Snapshot",
+        "operationId": "read_workspace_snapshot_api_workspace_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSnapshot"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/control-center": {
+      "get": {
+        "tags": [
+          "views"
+        ],
+        "summary": "Read Control Center Snapshot",
+        "operationId": "read_control_center_snapshot_api_control_center_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlCenterSnapshot"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activity": {
+      "get": {
+        "tags": [
+          "views"
+        ],
+        "summary": "Read Activity Feed",
+        "operationId": "read_activity_feed_api_activity_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 60,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityEvent"
+                  },
+                  "title": "Response Read Activity Feed Api Activity Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Read Health",
+        "operationId": "read_health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Read Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Read Ready",
+        "operationId": "read_ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Read Ready Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Read Metrics",
+        "operationId": "read_metrics_metrics_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Read Metrics Metrics Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Read Ops Config",
+        "operationId": "read_ops_config_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Read Ops Config Config Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Stream Live Events",
+        "operationId": "stream_live_events_events_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/export": {
+      "get": {
+        "tags": [
+          "data-ops"
+        ],
+        "summary": "Export Project Endpoint",
+        "operationId": "export_project_endpoint_api_projects__project_id__export_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectExportBundle-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/import": {
+      "post": {
+        "tags": [
+          "data-ops"
+        ],
+        "summary": "Import Project Endpoint",
+        "operationId": "import_project_endpoint_api_projects_import_post",
+        "parameters": [
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectImportResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/backup": {
+      "post": {
+        "tags": [
+          "data-ops"
+        ],
+        "summary": "Backup Project Endpoint",
+        "operationId": "backup_project_endpoint_api_projects__project_id__backup_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-nexus-user",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-User"
+            }
+          },
+          {
+            "name": "x-nexus-role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Nexus-Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectBackupResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivityEvent": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "task_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Title"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor",
+            "default": "System"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "system"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_type",
+          "entity_type",
+          "title",
+          "summary"
+        ],
+        "title": "ActivityEvent"
+      },
+      "ActivityEventSnapshot": {
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "task_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Title"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor",
+            "default": "System"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "system"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_type",
+          "entity_type",
+          "title",
+          "summary"
+        ],
+        "title": "ActivityEventSnapshot"
+      },
+      "AttentionTaskItem": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "task_title": {
+            "type": "string",
+            "title": "Task Title"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority",
+            "default": "medium"
+          },
+          "is_blocked": {
+            "type": "boolean",
+            "title": "Is Blocked",
+            "default": false
+          },
+          "blocked_by_open_count": {
+            "type": "integer",
+            "title": "Blocked By Open Count",
+            "default": 0
+          },
+          "missing_summary": {
+            "type": "boolean",
+            "title": "Missing Summary",
+            "default": false
+          },
+          "missing_next_step": {
+            "type": "boolean",
+            "title": "Missing Next Step",
+            "default": false
+          },
+          "recent_entries": {
+            "type": "integer",
+            "title": "Recent Entries",
+            "default": 0
+          },
+          "latest_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Summary"
+          },
+          "latest_next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Next Step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "task_title",
+          "task_status"
+        ],
+        "title": "AttentionTaskItem"
+      },
+      "ContextEntry": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "entry_type": {
+            "type": "string",
+            "title": "Entry Type",
+            "default": "note"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "what_changed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "What Changed"
+          },
+          "files_touched": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files Touched"
+          },
+          "decisions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decisions"
+          },
+          "open_questions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Questions"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Step"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor",
+            "default": "System"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "system"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "content"
+        ],
+        "title": "ContextEntry"
+      },
+      "ContextEntryCreate": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "default": ""
+          },
+          "entry_type": {
+            "type": "string",
+            "title": "Entry Type",
+            "default": "handoff"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "what_changed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "What Changed"
+          },
+          "files_touched": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files Touched"
+          },
+          "decisions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decisions"
+          },
+          "open_questions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Questions"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Step"
+          }
+        },
+        "type": "object",
+        "title": "ContextEntryCreate"
+      },
+      "ContextEntrySnapshot": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "default": ""
+          },
+          "entry_type": {
+            "type": "string",
+            "title": "Entry Type",
+            "default": "handoff"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "what_changed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "What Changed"
+          },
+          "files_touched": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files Touched"
+          },
+          "decisions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decisions"
+          },
+          "open_questions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Questions"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Step"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor",
+            "default": "System"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "system"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "ContextEntrySnapshot"
+      },
+      "ControlCenterSnapshot": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "total_tasks": {
+            "type": "integer",
+            "title": "Total Tasks",
+            "default": 0
+          },
+          "todo_count": {
+            "type": "integer",
+            "title": "Todo Count",
+            "default": 0
+          },
+          "in_progress_count": {
+            "type": "integer",
+            "title": "In Progress Count",
+            "default": 0
+          },
+          "done_count": {
+            "type": "integer",
+            "title": "Done Count",
+            "default": 0
+          },
+          "ready_count": {
+            "type": "integer",
+            "title": "Ready Count",
+            "default": 0
+          },
+          "blocked_count": {
+            "type": "integer",
+            "title": "Blocked Count",
+            "default": 0
+          },
+          "handoff_gap_count": {
+            "type": "integer",
+            "title": "Handoff Gap Count",
+            "default": 0
+          },
+          "handoffs_last_7_days": {
+            "type": "integer",
+            "title": "Handoffs Last 7 Days",
+            "default": 0
+          },
+          "ready_queue": {
+            "items": {
+              "$ref": "#/components/schemas/ReadyQueueItem"
+            },
+            "type": "array",
+            "title": "Ready Queue"
+          },
+          "attention_tasks": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionTaskItem"
+            },
+            "type": "array",
+            "title": "Attention Tasks"
+          },
+          "latest_handoffs": {
+            "items": {
+              "$ref": "#/components/schemas/HandoffPulseItem"
+            },
+            "type": "array",
+            "title": "Latest Handoffs"
+          },
+          "server": {
+            "$ref": "#/components/schemas/MCPServerStatus"
+          }
+        },
+        "type": "object",
+        "title": "ControlCenterSnapshot"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HandoffPulseItem": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "task_title": {
+            "type": "string",
+            "title": "Task Title"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Step"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "task_title",
+          "task_status"
+        ],
+        "title": "HandoffPulseItem"
+      },
+      "MCPServerStatus": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Nexus Context"
+          },
+          "transport": {
+            "type": "string",
+            "title": "Transport",
+            "default": "sse"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "online"
+          },
+          "sse_url": {
+            "type": "string",
+            "title": "Sse Url",
+            "default": "/mcp/sse"
+          },
+          "post_message_url": {
+            "type": "string",
+            "title": "Post Message Url",
+            "default": "/mcp/messages"
+          }
+        },
+        "type": "object",
+        "title": "MCPServerStatus"
+      },
+      "Project": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "owner_user_id": {
+            "type": "string",
+            "title": "Owner User Id",
+            "default": "default-user"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Project"
+      },
+      "ProjectArchiveUpdate": {
+        "properties": {
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archived"
+        ],
+        "title": "ProjectArchiveUpdate"
+      },
+      "ProjectBackupResult": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "backup_file": {
+            "type": "string",
+            "title": "Backup File"
+          },
+          "backup_path": {
+            "type": "string",
+            "title": "Backup Path"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "backup_file",
+          "backup_path"
+        ],
+        "title": "ProjectBackupResult"
+      },
+      "ProjectCreate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ProjectCreate"
+      },
+      "ProjectExportBundle-Input": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": "2026-03-15"
+          },
+          "exported_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Exported At"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectSnapshot"
+          },
+          "memberships": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectMembershipSnapshot"
+            },
+            "type": "array",
+            "title": "Memberships"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskSnapshot"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/TaskDependencySnapshot"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          },
+          "context_entries": {
+            "items": {
+              "$ref": "#/components/schemas/ContextEntrySnapshot"
+            },
+            "type": "array",
+            "title": "Context Entries"
+          },
+          "activity_events": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityEventSnapshot"
+            },
+            "type": "array",
+            "title": "Activity Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project"
+        ],
+        "title": "ProjectExportBundle"
+      },
+      "ProjectExportBundle-Output": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": "2026-03-15"
+          },
+          "exported_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Exported At"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectSnapshot"
+          },
+          "memberships": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectMembershipSnapshot"
+            },
+            "type": "array",
+            "title": "Memberships"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskSnapshot"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/TaskDependencySnapshot"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          },
+          "context_entries": {
+            "items": {
+              "$ref": "#/components/schemas/ContextEntrySnapshot"
+            },
+            "type": "array",
+            "title": "Context Entries"
+          },
+          "activity_events": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityEventSnapshot"
+            },
+            "type": "array",
+            "title": "Activity Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project"
+        ],
+        "title": "ProjectExportBundle"
+      },
+      "ProjectImportRequest": {
+        "properties": {
+          "bundle": {
+            "$ref": "#/components/schemas/ProjectExportBundle-Input"
+          },
+          "target_project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Project Id"
+          },
+          "replace_existing": {
+            "type": "boolean",
+            "title": "Replace Existing",
+            "default": false
+          },
+          "include_memberships": {
+            "type": "boolean",
+            "title": "Include Memberships",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "bundle"
+        ],
+        "title": "ProjectImportRequest"
+      },
+      "ProjectImportResult": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "replaced_existing": {
+            "type": "boolean",
+            "title": "Replaced Existing",
+            "default": false
+          },
+          "imported_task_count": {
+            "type": "integer",
+            "title": "Imported Task Count",
+            "default": 0
+          },
+          "imported_dependency_count": {
+            "type": "integer",
+            "title": "Imported Dependency Count",
+            "default": 0
+          },
+          "imported_context_entry_count": {
+            "type": "integer",
+            "title": "Imported Context Entry Count",
+            "default": 0
+          },
+          "imported_activity_event_count": {
+            "type": "integer",
+            "title": "Imported Activity Event Count",
+            "default": 0
+          },
+          "imported_membership_count": {
+            "type": "integer",
+            "title": "Imported Membership Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "title": "ProjectImportResult"
+      },
+      "ProjectMembership": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "member"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "user_id"
+        ],
+        "title": "ProjectMembership"
+      },
+      "ProjectMembershipCreate": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "member"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "ProjectMembershipCreate"
+      },
+      "ProjectMembershipSnapshot": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "member"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "ProjectMembershipSnapshot"
+      },
+      "ProjectSnapshot": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "owner_user_id": {
+            "type": "string",
+            "title": "Owner User Id",
+            "default": "default-user"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived",
+            "default": false
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ProjectSnapshot"
+      },
+      "ReadyQueueItem": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "task_title": {
+            "type": "string",
+            "title": "Task Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority",
+            "default": "medium"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "latest_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Summary"
+          },
+          "latest_next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Next Step"
+          },
+          "blocks_open_count": {
+            "type": "integer",
+            "title": "Blocks Open Count",
+            "default": 0
+          },
+          "recent_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recent Files"
+          },
+          "handoff_complete": {
+            "type": "boolean",
+            "title": "Handoff Complete",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "task_title",
+          "task_status"
+        ],
+        "title": "ReadyQueueItem"
+      },
+      "RelatedTaskSummary": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "task_title": {
+            "type": "string",
+            "title": "Task Title"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "dependency_type": {
+            "type": "string",
+            "title": "Dependency Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "task_title",
+          "task_status",
+          "dependency_type"
+        ],
+        "title": "RelatedTaskSummary"
+      },
+      "ResumePacket": {
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/Task"
+          },
+          "task_state": {
+            "$ref": "#/components/schemas/TaskOperationalState"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/TaskMemorySummary"
+          },
+          "blocked_by": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedTaskSummary"
+            },
+            "type": "array",
+            "title": "Blocked By"
+          },
+          "unblocks": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedTaskSummary"
+            },
+            "type": "array",
+            "title": "Unblocks"
+          },
+          "handoff_complete": {
+            "type": "boolean",
+            "title": "Handoff Complete",
+            "default": false
+          },
+          "recommended_next_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recommended Next Actions"
+          },
+          "agent_brief": {
+            "type": "string",
+            "title": "Agent Brief"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task",
+          "task_state",
+          "memory",
+          "agent_brief"
+        ],
+        "title": "ResumePacket"
+      },
+      "Task": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus",
+            "default": "todo"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority",
+            "default": "medium"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "Task"
+      },
+      "TaskArchiveUpdate": {
+        "properties": {
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archived"
+        ],
+        "title": "TaskArchiveUpdate"
+      },
+      "TaskCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus",
+            "default": "todo"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority",
+            "default": "medium"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "project_id"
+        ],
+        "title": "TaskCreate"
+      },
+      "TaskDependency": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "source_task_id": {
+            "type": "integer",
+            "title": "Source Task Id"
+          },
+          "target_task_id": {
+            "type": "integer",
+            "title": "Target Task Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "blocks"
+          },
+          "source_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Handle"
+          },
+          "target_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Handle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_task_id",
+          "target_task_id"
+        ],
+        "title": "TaskDependency"
+      },
+      "TaskDependencyCreate": {
+        "properties": {
+          "source_task_id": {
+            "type": "integer",
+            "title": "Source Task Id"
+          },
+          "target_task_id": {
+            "type": "integer",
+            "title": "Target Task Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "blocks"
+          },
+          "source_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Handle"
+          },
+          "target_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Handle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_task_id",
+          "target_task_id"
+        ],
+        "title": "TaskDependencyCreate"
+      },
+      "TaskDependencySnapshot": {
+        "properties": {
+          "source_task_id": {
+            "type": "integer",
+            "title": "Source Task Id"
+          },
+          "target_task_id": {
+            "type": "integer",
+            "title": "Target Task Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "blocks"
+          },
+          "source_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Handle"
+          },
+          "target_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Handle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_task_id",
+          "target_task_id"
+        ],
+        "title": "TaskDependencySnapshot"
+      },
+      "TaskMemorySummary": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "task_title": {
+            "type": "string",
+            "title": "Task Title"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "latest_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Summary"
+          },
+          "latest_next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Next Step"
+          },
+          "active_decisions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Active Decisions"
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Open Questions"
+          },
+          "recent_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recent Files"
+          },
+          "recent_entries": {
+            "items": {
+              "$ref": "#/components/schemas/ContextEntry"
+            },
+            "type": "array",
+            "title": "Recent Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "task_title",
+          "task_status"
+        ],
+        "title": "TaskMemorySummary"
+      },
+      "TaskOperationalState": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "is_ready": {
+            "type": "boolean",
+            "title": "Is Ready",
+            "default": false
+          },
+          "is_blocked": {
+            "type": "boolean",
+            "title": "Is Blocked",
+            "default": false
+          },
+          "blocked_by_open_count": {
+            "type": "integer",
+            "title": "Blocked By Open Count",
+            "default": 0
+          },
+          "blocks_open_count": {
+            "type": "integer",
+            "title": "Blocks Open Count",
+            "default": 0
+          },
+          "blocked_by": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedTaskSummary"
+            },
+            "type": "array",
+            "title": "Blocked By"
+          },
+          "unblocks": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedTaskSummary"
+            },
+            "type": "array",
+            "title": "Unblocks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "TaskOperationalState"
+      },
+      "TaskSnapshot": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus",
+            "default": "todo"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority",
+            "default": "medium"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived",
+            "default": false
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "TaskSnapshot"
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "todo",
+          "in_progress",
+          "done"
+        ],
+        "title": "TaskStatus"
+      },
+      "TaskUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          }
+        },
+        "type": "object",
+        "title": "TaskUpdate"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkspaceSnapshot": {
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/TaskDependency"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          },
+          "memory": {
+            "items": {
+              "$ref": "#/components/schemas/TaskMemorySummary"
+            },
+            "type": "array",
+            "title": "Memory"
+          },
+          "task_states": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOperationalState"
+            },
+            "type": "array",
+            "title": "Task States"
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceSnapshot"
+      }
+    }
+  }
+}

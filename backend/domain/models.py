@@ -61,6 +61,114 @@ class ProjectMembership(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class ProjectSnapshot(SQLModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    owner_user_id: str = "default-user"
+    archived: bool = False
+    created_at: Optional[datetime] = None
+
+
+class ProjectMembershipSnapshot(SQLModel):
+    user_id: str
+    role: str = "member"
+    created_at: Optional[datetime] = None
+
+
+class TaskSnapshot(SQLModel):
+    id: Optional[int] = None
+    title: str
+    description: Optional[str] = None
+    status: TaskStatus = TaskStatus.TODO
+    priority: str = "medium"
+    labels: Optional[str] = None
+    archived: bool = False
+    created_at: Optional[datetime] = None
+
+
+class TaskDependencySnapshot(SQLModel):
+    source_task_id: int
+    target_task_id: int
+    type: str = "blocks"
+    source_handle: Optional[str] = None
+    target_handle: Optional[str] = None
+
+
+class ContextEntrySnapshot(SQLModel):
+    task_id: int
+    content: str = ""
+    entry_type: str = "handoff"
+    summary: Optional[str] = None
+    what_changed: Optional[str] = None
+    files_touched: Optional[str] = None
+    decisions: Optional[str] = None
+    open_questions: Optional[str] = None
+    next_step: Optional[str] = None
+    actor: str = "System"
+    source: str = "system"
+    timestamp: Optional[datetime] = None
+
+
+class ActivityEventSnapshot(SQLModel):
+    event_type: str
+    entity_type: str
+    entity_id: Optional[int] = None
+    task_id: Optional[int] = None
+    task_title: Optional[str] = None
+    title: str
+    summary: str
+    actor: str = "System"
+    source: str = "system"
+    created_at: Optional[datetime] = None
+
+
+class ProjectExportBundle(SQLModel):
+    version: str = "2026-03-15"
+    exported_at: datetime = Field(default_factory=utc_now)
+    project: ProjectSnapshot
+    memberships: List[ProjectMembershipSnapshot] = Field(default_factory=list)
+    tasks: List[TaskSnapshot] = Field(default_factory=list)
+    dependencies: List[TaskDependencySnapshot] = Field(default_factory=list)
+    context_entries: List[ContextEntrySnapshot] = Field(default_factory=list)
+    activity_events: List[ActivityEventSnapshot] = Field(default_factory=list)
+
+
+class ProjectImportRequest(SQLModel):
+    bundle: ProjectExportBundle
+    target_project_id: Optional[str] = None
+    replace_existing: bool = False
+    include_memberships: bool = True
+
+
+class ProjectImportResult(SQLModel):
+    project_id: str
+    replaced_existing: bool = False
+    imported_task_count: int = 0
+    imported_dependency_count: int = 0
+    imported_context_entry_count: int = 0
+    imported_activity_event_count: int = 0
+    imported_membership_count: int = 0
+
+
+class ProjectBackupResult(SQLModel):
+    project_id: str
+    backup_file: str
+    backup_path: str
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class LiveUpdateEvent(SQLModel):
+    sequence: int
+    event_type: str
+    created_at: datetime
+    project_id: Optional[str] = None
+    request_id: Optional[str] = None
+    path: Optional[str] = None
+    method: Optional[str] = None
+    detail: Optional[str] = None
+
+
 class ActivityEvent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     event_type: str

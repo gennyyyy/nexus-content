@@ -211,3 +211,56 @@ def upsert_project_membership(
     session.commit()
     session.refresh(db_membership)
     return db_membership
+
+
+def delete_project_membership(
+    session: Session,
+    project_id: str,
+    user_id: str,
+    user: UserContext,
+    *,
+    actor: str = "Web operator",
+    source: str = "web",
+) -> None:
+    project = ensure_project_owner_or_admin(
+        session, project_id, user, allow_archived=True
+    )
+
+    if user_id == project.owner_user_id:
+        raise ValidationError("The project creator cannot be removed")
+
+    membership = session.exec(
+        select(ProjectMembership).where(
+            ProjectMembership.project_id == project_id,
+            ProjectMembership.user_id == user_id,
+        )
+    ).first()
+    if not membership:
+        raise NotFoundError("Project membership not found")
+
+    if membership.role == "owner":
+        remaining_owner = session.exec(
+            select(ProjectMembership).where(
+                ProjectMembership.project_id == project_id,
+                ProjectMembership.user_id != user_id,
+                ProjectMembership.role == "owner",
+            )
+        ).first()
+        if remaining_owner is None and user.role != "admin":
+            raise ValidationError(
+                "Add another owner before removing the last delegated owner"
+            )
+
+    record_activity(
+        session,
+        event_type="project.membership_removed",
+        entity_type="project-membership",
+        entity_id=membership.id,
+        title=f'Removed access for "{project.name}"',
+        summary=f"Removed {membership.role} access from {membership.user_id}.",
+        actor=actor,
+        source=source,
+        project_id=project.id,
+    )
+    session.delete(membership)
+    session.commit()

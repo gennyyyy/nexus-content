@@ -7,6 +7,5 @@ export function useControlCenterMetrics(projectId?: string) {
     return useQuery<OperatorMetrics>({
         queryKey: appQueryKeys.ops.metrics(projectId),
         queryFn: () => fetchOperatorMetrics(projectId),
-        refetchInterval: 30000,
     });
 }

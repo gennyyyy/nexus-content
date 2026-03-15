@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 from sqlmodel import Session, select
@@ -9,11 +9,13 @@ from ..domain.models import (
     ContextEntry,
     ControlCenterSnapshot,
     HandoffPulseItem,
+    MCPServerStatus,
     Project,
     ReadyQueueItem,
     Task,
     TaskDependency,
 )
+from ..settings import get_settings
 from .workspace import build_memory_summary, build_operational_states
 
 PRIORITY_ORDER = {
@@ -75,7 +77,7 @@ def record_activity(
         actor=actor,
         source=source,
         project_id=project_id,
-        created_at=created_at or datetime.utcnow(),
+        created_at=created_at or datetime.now(timezone.utc).replace(tzinfo=None),
     )
     session.add(event)
     return event
@@ -92,7 +94,7 @@ def seed_activity_events(session: Session) -> None:
         session.add(default_project)
         session.commit()
 
-    task_rows = session.exec(select(Task).where(Task.project_id.is_(None))).all()
+    task_rows = session.exec(select(Task).where(Task.project_id == None)).all()
     tasks_without_project = [task for task in task_rows]
     if tasks_without_project:
         for task in tasks_without_project:
@@ -182,7 +184,10 @@ def build_activity_feed(
 
 
 def build_task_activity_feed(
-    session: Session, task_id: int, limit: int = 60
+    session: Session,
+    task_id: int,
+    limit: int = 60,
+    project_id: str | None = None,
 ) -> list[ActivityEvent]:
     safe_limit = max(1, min(limit, 200))
     created_at_column = cast(Any, ActivityEvent.created_at)
@@ -193,6 +198,8 @@ def build_task_activity_feed(
         .order_by(created_at_column.desc(), id_column.desc())
         .limit(safe_limit)
     )
+    if project_id:
+        statement = statement.where(ActivityEvent.project_id == project_id)
     rows = session.exec(statement).all()
     return [event for event in rows]
 
@@ -202,6 +209,7 @@ def build_control_center_snapshot(
     dependencies: list[TaskDependency],
     entries: list[ContextEntry],
 ) -> ControlCenterSnapshot:
+    settings = get_settings()
     entries_by_task: dict[int, list[ContextEntry]] = {}
     for entry in entries:
         entries_by_task.setdefault(entry.task_id, []).append(entry)
@@ -309,7 +317,7 @@ def build_control_center_snapshot(
         reverse=True,
     )
 
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
 
     return ControlCenterSnapshot(
         total_tasks=len(tasks),
@@ -338,4 +346,8 @@ def build_control_center_snapshot(
         ready_queue=ready_queue[:8],
         attention_tasks=attention_tasks[:8],
         latest_handoffs=latest_handoffs[:6],
+        server=MCPServerStatus(
+            sse_url=settings.public_mcp_sse_url,
+            post_message_url=settings.public_mcp_messages_url,
+        ),
     )

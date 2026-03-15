@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Brain, CircleHelp, FileCode2, Flag, StepForward, RefreshCw, Inbox } from "lucide-react";
-import { fetchMemoryOverview, fetchTasks, type Task, type TaskMemorySummary } from "../lib/api";
+import { Brain, CircleHelp, FileCode2, Flag, StepForward, RefreshCw, Inbox, Search } from "lucide-react";
+import { type Task } from "../lib/api";
 import { TaskContextModal } from "../components/TaskContextModal";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import { useParams } from "react-router-dom";
+import { useMemoryOverviewQuery, useMemoryTasksQuery } from "./memory/useMemoryHubData";
 
 const STATUS_LABEL: Record<Task["status"], string> = {
     todo: "To Do",
@@ -14,30 +15,22 @@ const STATUS_LABEL: Record<Task["status"], string> = {
 
 export function MemoryHub() {
     const { projectId } = useParams();
-    const [memories, setMemories] = useState<TaskMemorySummary[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [search, setSearch] = useState("");
+    const memoryQuery = useMemoryOverviewQuery(projectId, search);
+    const tasksQuery = useMemoryTasksQuery(projectId);
 
-    const loadMemory = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const [memoryData, taskData] = await Promise.all([fetchMemoryOverview(projectId), fetchTasks(projectId)]);
-            setMemories(memoryData);
-            setTasks(taskData);
-        } catch (err) {
-            console.error(err);
-            setError("Failed to load memory overview. Is the backend running?");
-        } finally {
-            setLoading(false);
-        }
-    }, [projectId]);
+    const memories = memoryQuery.data ?? [];
+    const tasks = tasksQuery.data ?? [];
+    const loading = memoryQuery.isLoading || tasksQuery.isLoading;
+    const error = memoryQuery.error || tasksQuery.error;
 
-    useEffect(() => {
-        void loadMemory();
-    }, [loadMemory]);
+    const reload = useMemo(
+        () => () => {
+            void Promise.all([memoryQuery.refetch(), tasksQuery.refetch()]);
+        },
+        [memoryQuery, tasksQuery],
+    );
 
     return (
         <div className="h-full overflow-auto p-6 nexus-scroll">
@@ -49,6 +42,16 @@ export function MemoryHub() {
                 <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-zinc-400">
                     Every card answers: what changed, what matters, what is blocked, and what should happen next.
                 </p>
+                <div className="relative mt-4 max-w-xl">
+                    <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                    <input
+                        type="search"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search summaries, next steps, files, decisions, or questions"
+                        className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/65 py-3 pl-10 pr-4 text-sm text-zinc-100 outline-none transition focus:border-blue-500/40"
+                    />
+                </div>
             </div>
 
             {loading ? (
@@ -77,9 +80,11 @@ export function MemoryHub() {
                         <RefreshCw size={24} className="text-rose-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-2">Connection Error</h3>
-                    <p className="text-sm text-zinc-400 mb-6 max-w-sm">{error}</p>
+                    <p className="text-sm text-zinc-400 mb-6 max-w-sm">
+                        {error instanceof Error ? error.message : "Failed to load memory overview. Is the backend running?"}
+                    </p>
                     <button
-                        onClick={() => void loadMemory()}
+                        onClick={reload}
                         className="inline-flex items-center gap-2 bg-white px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-zinc-200"
                     >
                         <RefreshCw size={14} /> Try Again
@@ -92,7 +97,9 @@ export function MemoryHub() {
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-2">No Memories Yet</h3>
                     <p className="text-sm text-zinc-400 max-w-sm">
-                        Agent memories will appear here once tasks have been processed through the MCP server.
+                        {search.trim()
+                            ? "No memory cards match the current search. Try a task name, file path, decision, or next-step phrase."
+                            : "Agent memories will appear here once tasks have been processed through the MCP server."}
                     </p>
                 </div>
             ) : (

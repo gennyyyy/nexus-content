@@ -22,6 +22,7 @@ interface Props {
     inspectorDraft: InspectorDraft;
     onInspectorFieldChange: (field: keyof InspectorDraft, value: string) => void;
     onSaveTaskDetails: () => void | Promise<void>;
+    onArchiveSelectedTask: () => void | Promise<void>;
     onDeleteSelectedTask: () => void | Promise<void>;
     onStatusChange: (status: Task["status"]) => void | Promise<void>;
     onBoardDragEnd: (result: DropResult) => void | Promise<void>;
@@ -41,6 +42,7 @@ export function EasyWorkspaceView({
     inspectorDraft,
     onInspectorFieldChange,
     onSaveTaskDetails,
+    onArchiveSelectedTask,
     onDeleteSelectedTask,
     onStatusChange,
     onBoardDragEnd,
@@ -313,6 +315,15 @@ export function EasyWorkspaceView({
                                                 >
                                                     Save Details
                                                 </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => requestConfirm("Archive Task", `Archive "${selectedTask.title}"? It will leave active boards and can be restored from project settings.`, () => void onArchiveSelectedTask())}
+                                                    className="border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 transition-colors duration-150 hover:bg-amber-500/16"
+                                                >
+                                                    Archive Task
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => requestConfirm("Delete Task", `Are you sure you want to delete "${selectedTask.title}"? All context entries and dependencies will be permanently removed.`, () => void onDeleteSelectedTask())}

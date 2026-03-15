@@ -1,43 +1,29 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchProjects, createProject, fetchControlCenterSnapshot, type Project, type ControlCenterSnapshot } from "../lib/api";
+import { type ControlCenterSnapshot, type Project } from "../lib/api";
 import { Server, Bot, FolderKanban, Plus, Cpu, Activity, Terminal } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useCreateProjectMutation, useGlobalControlCenterQuery, useProjectsQuery } from "./project-selector/useProjectSelectorData";
 
 export function ProjectSelector() {
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [stats, setStats] = useState<ControlCenterSnapshot | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const projectsQuery = useProjectsQuery();
+    const statsQuery = useGlobalControlCenterQuery();
+    const createProjectMutation = useCreateProjectMutation();
     const [isCreating, setIsCreating] = useState(false);
     const [newProjectName, setNewProjectName] = useState("");
     const [newProjectId, setNewProjectId] = useState("");
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    async function loadData() {
-        setIsLoading(true);
-        try {
-            const [projectsData, statsData] = await Promise.all([
-                fetchProjects(),
-                fetchControlCenterSnapshot(null).catch(() => null) // Global stats if supported, or gracefully fail
-            ]);
-            setProjects(projectsData);
-            if (statsData) setStats(statsData);
-        } catch (error) {
-            console.error("Failed to load data", error);
-        } finally {
-            setIsLoading(false);
-        }
-    }
+    const projects: Project[] = projectsQuery.data ?? [];
+    const stats: ControlCenterSnapshot | null = statsQuery.data ?? null;
+    const isLoading = projectsQuery.isLoading;
+    const createError = createProjectMutation.error;
 
     async function handleCreateProject(e: React.FormEvent) {
         e.preventDefault();
         if (!newProjectId || !newProjectName) return;
 
         try {
-            await createProject({
+            await createProjectMutation.mutateAsync({
                 id: newProjectId,
                 name: newProjectName,
                 description: `Project ${newProjectName}`
@@ -45,7 +31,6 @@ export function ProjectSelector() {
             setIsCreating(false);
             setNewProjectId("");
             setNewProjectName("");
-            loadData();
         } catch (error) {
             console.error("Failed to create project", error);
         }
@@ -267,6 +252,11 @@ export function ProjectSelector() {
                                     <Plus size={14} /> Create
                                 </button>
                             </div>
+                            {createError ? (
+                                <p className="text-sm text-rose-400">
+                                    {createError instanceof Error ? createError.message : "Failed to create project."}
+                                </p>
+                            ) : null}
                         </form>
                     </div>
                 </div>

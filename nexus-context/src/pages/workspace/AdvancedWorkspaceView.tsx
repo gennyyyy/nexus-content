@@ -42,6 +42,7 @@ interface Props {
     onSelectTask: (task: Task) => void;
     onOpenContext: (task: Task) => void;
     onSaveTaskDetails: () => void | Promise<void>;
+    onArchiveSelectedTask: () => void | Promise<void>;
     onDeleteSelectedTask: () => void | Promise<void>;
     onStatusChange: (status: Task["status"]) => void | Promise<void>;
     onDeleteSelectedEdge: () => void | Promise<void>;
@@ -71,6 +72,7 @@ export function AdvancedWorkspaceView({
     onSelectTask,
     onOpenContext,
     onSaveTaskDetails,
+    onArchiveSelectedTask,
     onDeleteSelectedTask,
     onStatusChange,
     onDeleteSelectedEdge,
@@ -362,6 +364,15 @@ export function AdvancedWorkspaceView({
                                         >
                                             Save Details
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => requestConfirm("Archive Task", `Archive "${selectedTask.title}"? It will leave active boards and can be restored later.`, () => void onArchiveSelectedTask())}
+                                            className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-sm font-semibold text-amber-100 transition hover:-translate-y-0.5 hover:bg-amber-500/16"
+                                        >
+                                            Archive Task
+                                        </button>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-1">
                                         <button
                                             type="button"
                                             onClick={() => requestConfirm("Delete Task", `Are you sure you want to delete "${selectedTask.title}"? All context entries and dependencies will be permanently removed.`, () => void onDeleteSelectedTask())}

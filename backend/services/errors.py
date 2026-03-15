@@ -16,3 +16,7 @@ class NotFoundError(ServiceError):
 
 class ConflictError(ServiceError):
     status_code = 409
+
+
+class ForbiddenError(ServiceError):
+    status_code = 403

@@ -6,10 +6,12 @@ import {
     deleteTask,
     createDependency,
     deleteDependency,
+    updateTaskArchiveState,
     type Task,
     type TaskDependency,
     type WorkspaceSnapshot
 } from "../../../lib/api";
+import { appQueryKeys } from "../../../lib/queryKeys";
 
 export const workspaceKeys = {
     all: ["workspace"] as const,
@@ -30,6 +32,9 @@ export function useCreateTask(projectId?: string | null) {
         mutationFn: (task: Partial<Task>) => createTask(task),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: workspaceKeys.snapshot(projectId) });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.tasks.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.memory.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.controlCenter.all });
         },
     });
 }
@@ -61,6 +66,9 @@ export function useUpdateTask(projectId?: string | null) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: workspaceKeys.snapshot(projectId) });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.tasks.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.memory.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.controlCenter.all });
         },
     });
 }
@@ -72,6 +80,24 @@ export function useDeleteTask(projectId?: string | null) {
         mutationFn: (id: number) => deleteTask(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: workspaceKeys.snapshot(projectId) });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.tasks.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.memory.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.controlCenter.all });
+        },
+    });
+}
+
+export function useArchiveTask(projectId?: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, archived }: { id: number; archived: boolean }) =>
+            updateTaskArchiveState(id, archived),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: workspaceKeys.snapshot(projectId) });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.tasks.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.memory.all });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.controlCenter.all });
         },
     });
 }
@@ -83,6 +109,7 @@ export function useCreateDependency(projectId?: string | null) {
         mutationFn: (dependency: TaskDependency) => createDependency(dependency),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: workspaceKeys.snapshot(projectId) });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.controlCenter.all });
         },
     });
 }
@@ -94,6 +121,7 @@ export function useDeleteDependency(projectId?: string | null) {
         mutationFn: (id: number) => deleteDependency(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: workspaceKeys.snapshot(projectId) });
+            queryClient.invalidateQueries({ queryKey: appQueryKeys.controlCenter.all });
         },
     });
 }

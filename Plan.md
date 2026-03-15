@@ -16,8 +16,9 @@ Built with **Python**, **FastAPI**, and **SQLModel** (SQLite).
 
 ### 2. Frontend (`/nexus-context`)
 Built with **React**, **Vite**, **Tailwind CSS v4**, and **shadcn/ui**.
-- **Kanban View**: A drag-and-drop board for managing task statuses.
-- **Dependency Graph**: A node-based visualization using **React Flow**, allowing users to map out complex task relationships visually.
+- **Project Selector**: Entry point for choosing a workspace and checking global stats.
+- **Control Center**: A project-scoped operational dashboard with ready queue, activity, and handoff health.
+- **Workspace**: A project-scoped easy mode and advanced graph mode built on **React Flow**.
 - **Context Modal**: A slide-over panel that shows the history of context entries for a selected task, acting as a "memory feed" for the AI.
 
 ## How to use as an AI Agent
@@ -26,10 +27,12 @@ AI agents can connect to this platform using the MCP SSE endpoint:
 - **Post Message URL**: `http://localhost:8000/mcp/messages`
 
 ### Available MCP Tools
-- `get_task_graph()`: Retrieves all tasks and their dependencies. Use this to understand the project architecture or current roadmap.
-- `create_task(title, description, parent_task_id?)`: Create a new task. If `parent_task_id` is provided, it creates a dependency.
-- `update_task_status(task_id, status)`: Move a task through the Kanban columns (`todo`, `in_progress`, `done`).
-- `add_context(task_id, content)`: Document what you've just done or learned. This is critical for maintaining context for yourself or other agents.
+- `get_task_graph(project_id?)`: Retrieves tasks and dependencies for a project or the full workspace.
+- `get_ready_tasks(project_id?)`: Returns tasks that are safe to start immediately.
+- `get_resume_packet(task_id, project_id?)`: Returns a focused resume payload for agent handoff.
+- `create_task(title, description, parent_task_id?, project_id?)`: Create a new task inside the correct project scope.
+- `update_task_status(task_id, status, project_id?)`: Move a task through the workflow safely.
+- `add_context(task_id, content, project_id?)`: Record progress or context for a task.
 
 ## Installation & Setup
 
@@ -55,6 +58,13 @@ cd nexus-context
 npm install
 npm run dev -- --port 5173
 ```
+
+### Primary Routes
+
+- `/projects`
+- `/projects/:projectId/control-center`
+- `/projects/:projectId/workspace`
+- `/projects/:projectId/memory`
 
 ## Future Roadmap
 - [ ] Integration with more MCP clients (Claude Desktop, etc.)

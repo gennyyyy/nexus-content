@@ -9,7 +9,7 @@ import {
 } from "./constants";
 import { edgeId, getFlowBadge, normalizePriority } from "./utils";
 import type { WorkspaceMode } from "./types";
-import { useToast } from "../../components/ToastProvider";
+import { useToast } from "../../components/toast-context";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import {
@@ -17,6 +17,7 @@ import {
     useCreateTask,
     useUpdateTask,
     useDeleteTask,
+    useArchiveTask,
     useCreateDependency,
     useDeleteDependency,
 } from "./hooks/useWorkspaceQueries";
@@ -49,6 +50,7 @@ export function useWorkspaceController() {
     const createTaskMutation = useCreateTask(projectId);
     const updateTaskMutation = useUpdateTask(projectId);
     const deleteTaskMutation = useDeleteTask(projectId);
+    const archiveTaskMutation = useArchiveTask(projectId);
     const createDependencyMutation = useCreateDependency(projectId);
     const deleteDependencyMutation = useDeleteDependency(projectId);
 
@@ -76,6 +78,7 @@ export function useWorkspaceController() {
     const [newTaskTitle, setNewTaskTitle] = useState("");
     const [dependencyType, setDependencyType] = useState<DependencyType>(DEPENDENCY_TYPES[0]);
     const [inspectorDraft, setInspectorDraft] = useState<InspectorDraft>(DEFAULT_INSPECTOR_DRAFT);
+    const urlTaskId = searchParams.get("taskId");
 
     // Sync localStorage
     useEffect(() => {
@@ -86,15 +89,19 @@ export function useWorkspaceController() {
 
     // Handle URL jumping
     useEffect(() => {
-        const urlTaskId = searchParams.get("taskId");
         if (urlTaskId && snapshot) {
             const id = Number(urlTaskId);
             if (snapshot.tasks.some(t => t.id === id)) {
-                setSelectedTaskId(id);
-                setSearchParams((prev) => { prev.delete("taskId"); return prev; }, { replace: true });
+                queueMicrotask(() => {
+                    setSelectedTaskId(id);
+                    setSearchParams((prev) => {
+                        prev.delete("taskId");
+                        return prev;
+                    }, { replace: true });
+                });
             }
         }
-    }, [searchParams, setSearchParams, snapshot]);
+    }, [urlTaskId, setSearchParams, snapshot]);
 
     // Sync Graph to fresh data
     useEffect(() => {
@@ -102,7 +109,9 @@ export function useWorkspaceController() {
             syncGraph(snapshot.tasks, snapshot.dependencies, memoryByTask, operationalByTask);
             // Verify selectedEdgeId still exists
             if (selectedEdgeId && !snapshot.dependencies.some(d => edgeId(d) === selectedEdgeId)) {
-                setSelectedEdgeId(null);
+                queueMicrotask(() => {
+                    setSelectedEdgeId(null);
+                });
             }
         }
     }, [snapshot, memoryByTask, operationalByTask, syncGraph, selectedEdgeId]);
@@ -113,11 +122,13 @@ export function useWorkspaceController() {
 
     // Inspector draft syncing
     useEffect(() => {
-        setInspectorDraft({
-            title: selectedTask?.title || "",
-            description: selectedTask?.description || "",
-            priority: selectedTask?.priority || "medium",
-            labels: selectedTask?.labels || "",
+        queueMicrotask(() => {
+            setInspectorDraft({
+                title: selectedTask?.title || "",
+                description: selectedTask?.description || "",
+                priority: selectedTask?.priority || "medium",
+                labels: selectedTask?.labels || "",
+            });
         });
     }, [selectedTask]);
 
@@ -184,6 +195,29 @@ export function useWorkspaceController() {
             onError: () => toast("Failed to delete task", "error")
         });
     }, [selectedTask, contextTaskId, deleteTaskMutation, graph, toast]);
+
+    const handleArchiveSelectedTask = useCallback(() => {
+        if (!selectedTask?.id) return;
+        const id = selectedTask.id;
+
+        archiveTaskMutation.mutate(
+            { id, archived: true },
+            {
+                onSuccess: () => {
+                    setSelectedTaskId(null);
+                    setSelectedEdgeId(null);
+                    if (contextTaskId === id) setContextTaskId(null);
+                    toast("Task archived", "success");
+                },
+                onError: (error) => {
+                    toast(
+                        error instanceof Error ? error.message : "Failed to archive task",
+                        "error",
+                    );
+                },
+            },
+        );
+    }, [archiveTaskMutation, contextTaskId, selectedTask, toast]);
 
     const handleDeleteSelectedEdge = useCallback(() => {
         if (!selectedEdgeId) return;
@@ -302,6 +336,7 @@ export function useWorkspaceController() {
         handleStatusChange,
         handleSaveTaskDetails,
         handleDeleteSelectedTask,
+        handleArchiveSelectedTask,
         handleDeleteSelectedEdge,
         handleConnect,
         handleBoardDragEnd,

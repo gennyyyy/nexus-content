@@ -1,18 +1,30 @@
 import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import { Search, FileText, LayoutDashboard, Brain, Network, Plus, FolderSync, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchTasks, fetchProjects, type Task, type Project } from "../lib/api";
-;
+import { fetchTasks, fetchProjectsWithOptions, type Task, type Project } from "../lib/api";
+import { appQueryKeys } from "../lib/queryKeys";
 
 export function CommandPalette() {
     const [open, setOpen] = useState(false);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [_, setLoading] = useState(false);
     const navigate = useNavigate();
     const { projectId } = useParams();
-    
+
+    const tasksQuery = useQuery<Task[]>({
+        queryKey: appQueryKeys.tasks.list(projectId),
+        queryFn: () => fetchTasks(projectId),
+        enabled: open,
+    });
+
+    const projectsQuery = useQuery<Project[]>({
+        queryKey: appQueryKeys.projects.list(false),
+        queryFn: () => fetchProjectsWithOptions(),
+        enabled: open,
+    });
+
+    const tasks = tasksQuery.data ?? [];
+    const projects = projectsQuery.data ?? [];
 
     // Toggle the menu when ⌘K is pressed
     useEffect(() => {
@@ -26,27 +38,6 @@ export function CommandPalette() {
         document.addEventListener("keydown", down);
         return () => document.removeEventListener("keydown", down);
     }, []);
-
-    const loadData = useCallback(async () => {
-        if (!open) return;
-        setLoading(true);
-        try {
-            const [taskList, projectList] = await Promise.all([
-                fetchTasks(projectId),
-                fetchProjects(),
-            ]);
-            setTasks(taskList);
-            setProjects(projectList);
-        } catch (error) {
-            console.error("Failed to load command palette data", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [open, projectId]);
-
-    useEffect(() => {
-        void loadData();
-    }, [loadData]);
 
     const runCommand = useCallback((command: () => void) => {
         setOpen(false);

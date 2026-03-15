@@ -3,7 +3,7 @@ import json
 from mcp.server.fastmcp import FastMCP
 from sqlmodel import Session, select
 
-from ..db.session import engine
+from ..db.session import get_engine
 from ..domain.models import (
     ContextEntryCreate,
     Task,
@@ -52,14 +52,37 @@ def build_memory_payload(task: Task, memory: TaskMemorySummary) -> dict[str, obj
     }
 
 
+def _load_tasks(session: Session, project_id: str | None = None) -> list[Task]:
+    statement = select(Task)
+    if project_id:
+        statement = statement.where(Task.project_id == project_id)
+    rows = session.exec(statement).all()
+    return [task for task in rows]
+
+
+def _load_dependencies(
+    session: Session, tasks: list[Task], project_id: str | None = None
+) -> list[TaskDependency]:
+    rows = session.exec(select(TaskDependency)).all()
+    dependencies = [dependency for dependency in rows]
+    if not project_id:
+        return dependencies
+
+    task_ids = {task.id for task in tasks if task.id is not None}
+    return [
+        dependency
+        for dependency in dependencies
+        if dependency.source_task_id in task_ids
+        and dependency.target_task_id in task_ids
+    ]
+
+
 @mcp.tool()
-async def get_task_graph() -> str:
+async def get_task_graph(project_id: str | None = None) -> str:
     """Get the full tree of tasks and their connections."""
-    with Session(engine) as session:
-        task_rows = session.exec(select(Task)).all()
-        dependency_rows = session.exec(select(TaskDependency)).all()
-        tasks = [task for task in task_rows]
-        dependencies = [dependency for dependency in dependency_rows]
+    with Session(get_engine()) as session:
+        tasks = _load_tasks(session, project_id)
+        dependencies = _load_dependencies(session, tasks, project_id)
         states = {
             state.task_id: state
             for state in build_operational_states(tasks, dependencies)
@@ -95,13 +118,11 @@ async def get_task_graph() -> str:
 
 
 @mcp.tool()
-async def get_ready_tasks() -> str:
+async def get_ready_tasks(project_id: str | None = None) -> str:
     """Get tasks that are ready to start now because they are todo and not blocked by open dependencies."""
-    with Session(engine) as session:
-        task_rows = session.exec(select(Task)).all()
-        dependency_rows = session.exec(select(TaskDependency)).all()
-        tasks = [task for task in task_rows]
-        dependencies = [dependency for dependency in dependency_rows]
+    with Session(get_engine()) as session:
+        tasks = _load_tasks(session, project_id)
+        dependencies = _load_dependencies(session, tasks, project_id)
         states = {
             state.task_id: state
             for state in build_operational_states(tasks, dependencies)
@@ -129,11 +150,11 @@ async def get_ready_tasks() -> str:
 
 
 @mcp.tool()
-async def get_resume_packet(task_id: int) -> str:
+async def get_resume_packet(task_id: int, project_id: str | None = None) -> str:
     """Get a single task's resume packet with memory, blockers, and recommended next actions."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         try:
-            packet = get_task_resume_packet(session, task_id)
+            packet = get_task_resume_packet(session, task_id, project_id)
         except NotFoundError:
             return f"Error: Task {task_id} not found."
         return packet.model_dump_json()
@@ -141,15 +162,34 @@ async def get_resume_packet(task_id: int) -> str:
 
 @mcp.tool()
 async def create_task(
-    title: str, description: str = "", parent_task_id: int | None = None
+    title: str,
+    description: str = "",
+    parent_task_id: int | None = None,
+    project_id: str | None = None,
 ) -> str:
     """Create a new task, optionally linking it to a parent task that it blocks."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
+        scoped_project_id = project_id
+        if parent_task_id is not None:
+            parent_task = session.get(Task, parent_task_id)
+            if not parent_task:
+                return f"Error: Parent task {parent_task_id} not found."
+            if (
+                scoped_project_id is not None
+                and parent_task.project_id != scoped_project_id
+            ):
+                return (
+                    f"Error: Parent task {parent_task_id} belongs to project "
+                    f"{parent_task.project_id}, not {scoped_project_id}."
+                )
+            scoped_project_id = parent_task.project_id
+
         task = create_task_service(
             session,
             title=title,
             description=description,
             status=TaskStatus.TODO,
+            project_id=scoped_project_id,
             actor="MCP agent",
             source="mcp",
         )
@@ -179,10 +219,15 @@ async def create_task(
 
 
 @mcp.tool()
-async def update_task_status(task_id: int, status: str) -> str:
+async def update_task_status(
+    task_id: int, status: str, project_id: str | None = None
+) -> str:
     """Update task status ('todo', 'in_progress', 'done')."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         try:
+            task = session.get(Task, task_id)
+            if not task or (project_id is not None and task.project_id != project_id):
+                return f"Error: Task {task_id} not found."
             update_task(
                 session,
                 task_id,
@@ -198,14 +243,18 @@ async def update_task_status(task_id: int, status: str) -> str:
 
 
 @mcp.tool()
-async def add_context(task_id: int, content: str) -> str:
+async def add_context(task_id: int, content: str, project_id: str | None = None) -> str:
     """Document progress or add context to a task."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
+        task = session.get(Task, task_id)
+        if not task or (project_id is not None and task.project_id != project_id):
+            return f"Error: Task {task_id} not found."
         try:
             create_task_context(
                 session,
                 task_id,
                 ContextEntryCreate(content=content, entry_type="note"),
+                project_id=task.project_id,
                 actor="MCP agent",
                 source="mcp",
             )
@@ -215,14 +264,14 @@ async def add_context(task_id: int, content: str) -> str:
 
 
 @mcp.tool()
-async def get_task_memory(task_id: int) -> str:
+async def get_task_memory(task_id: int, project_id: str | None = None) -> str:
     """Get the latest handoff memory for a task so an agent can resume work cleanly."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         task = session.get(Task, task_id)
-        if not task:
+        if not task or (project_id is not None and task.project_id != project_id):
             return f"Error: Task {task_id} not found."
 
-        memory = get_task_memory_summary(session, task_id)
+        memory = get_task_memory_summary(session, task_id, task.project_id)
         return json.dumps(build_memory_payload(task, memory))
 
 
@@ -235,9 +284,13 @@ async def add_memory_handoff(
     decisions: str = "",
     open_questions: str = "",
     next_step: str = "",
+    project_id: str | None = None,
 ) -> str:
     """Write a structured memory handoff so another agent can continue the task without losing context."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
+        task = session.get(Task, task_id)
+        if not task or (project_id is not None and task.project_id != project_id):
+            return f"Error: Task {task_id} not found."
         try:
             create_memory_handoff(
                 session,
@@ -248,6 +301,7 @@ async def add_memory_handoff(
                 decisions=decisions,
                 open_questions=open_questions,
                 next_step=next_step,
+                project_id=task.project_id,
                 actor="MCP agent",
                 source="mcp",
             )

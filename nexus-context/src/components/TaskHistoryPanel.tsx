@@ -1,26 +1,10 @@
-import { useEffect, useState } from "react";
-import { fetchTaskActivity, type ActivityEvent } from "../lib/api";
+import { useParams } from "react-router-dom";
 import { Clock } from "lucide-react";
+import { useTaskActivity } from "./useTaskActivity";
 
 export function TaskHistoryPanel({ taskId }: { taskId: number }) {
-    const [events, setEvents] = useState<ActivityEvent[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        let mounted = true;
-        setLoading(true);
-        fetchTaskActivity(taskId)
-            .then((data) => {
-                if (mounted) setEvents(data);
-            })
-            .catch(console.error)
-            .finally(() => {
-                if (mounted) setLoading(false);
-            });
-        return () => {
-            mounted = false;
-        };
-    }, [taskId]);
+    const { projectId } = useParams();
+    const { data: events = [], isLoading: loading } = useTaskActivity(taskId, projectId);
 
     if (loading) {
         return <div className="p-6 text-center text-zinc-500 text-xs font-medium animate-pulse">Loading history timeline...</div>;

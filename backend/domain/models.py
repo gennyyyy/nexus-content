@@ -1,8 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class TaskStatus(str, Enum):
@@ -24,13 +28,37 @@ class Project(SQLModel, table=True):
     id: str = Field(primary_key=True)
     name: str
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    owner_user_id: str = Field(default="default-user")
+    archived: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class ProjectCreate(SQLModel):
     id: str
     name: str
     description: Optional[str] = None
+
+
+class ProjectArchiveUpdate(SQLModel):
+    archived: bool
+
+
+class ProjectMembershipCreate(SQLModel):
+    user_id: str
+    role: str = "member"
+
+
+class UserContext(SQLModel):
+    user_id: str
+    role: str = "member"
+
+
+class ProjectMembership(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: str = Field(foreign_key="project.id")
+    user_id: str
+    role: str = Field(default="member")
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class ActivityEvent(SQLModel, table=True):
@@ -45,7 +73,7 @@ class ActivityEvent(SQLModel, table=True):
     actor: str = Field(default="System")
     source: str = Field(default="system")
     project_id: Optional[str] = Field(default=None, foreign_key="project.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class ContextEntry(SQLModel, table=True):
@@ -61,7 +89,7 @@ class ContextEntry(SQLModel, table=True):
     next_step: Optional[str] = None
     actor: str = Field(default="System")
     source: str = Field(default="system")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=utc_now)
 
     task: "Task" = Relationship(back_populates="context_entries")
 
@@ -84,6 +112,10 @@ class TaskCreate(SQLModel):
     priority: str = "medium"
     labels: Optional[str] = None
     project_id: str
+
+
+class TaskArchiveUpdate(SQLModel):
+    archived: bool
 
 
 class TaskUpdate(SQLModel):
@@ -187,7 +219,7 @@ class MCPServerStatus(SQLModel):
 
 
 class ControlCenterSnapshot(SQLModel):
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=utc_now)
     total_tasks: int = 0
     todo_count: int = 0
     in_progress_count: int = 0
@@ -218,6 +250,7 @@ class Task(SQLModel, table=True):
     priority: str = Field(default="medium")
     labels: Optional[str] = None
     project_id: Optional[str] = Field(default=None, foreign_key="project.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    archived: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=utc_now)
 
     context_entries: List[ContextEntry] = Relationship(back_populates="task")

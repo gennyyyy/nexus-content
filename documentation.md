@@ -46,6 +46,7 @@ The backend is organized using a modular, service-oriented architecture, acting 
 *   **Domain Models (`backend/domain/models.py`)**: Centralized SQLModel definitions for `Tasks`, `Project`, `ContextEntry`, and complex response schemas like `ResumePacket` and `ControlCenterSnapshot`.
 *   **Integration Layer (`backend/integrations/`)**: Houses the **Model Context Protocol (MCP)** server implementation, bridging the internal state to standardized AI tools.
 *   **Database & Session (`backend/db/`)**: Manages the SQLAlchemy/SQLModel engine and session lifecycle, utilizing SQLite for lightweight, local-first persistence.
+*   **Runtime Settings (`backend/settings.py`)**: Centralizes environment-driven configuration for database access, browser origins, and public MCP/API URLs.
 
 ---
 
@@ -54,10 +55,12 @@ The backend is organized using a modular, service-oriented architecture, acting 
 Nexus Context is not just a tool; it's an **MCP Server**. This means any MCP-compliant agent (Claude, Copilot, etc.) can "plug in" to your project.
 
 ### 4.1 Exposed Agent Tools:
-1.  **`get_task_graph`**: The agent downloads the entire dependency map, giving it an instant "30,000-foot view" of the project.
-2.  **`create_task`**: Agents can propose their own sub-tasks, decomposing complex goals into manageable nodes.
-3.  **`update_task_status`**: As the code is written and tests pass, the agent moves the card, updating the human's dashboard in real-time.
-4.  **`add_context`**: This is the heart of the system. The agent logs a **Structured Handoff** before finishing its turn.
+1.  **`get_task_graph(project_id?)`**: The agent downloads the dependency map for the current project or the whole workspace.
+2.  **`get_ready_tasks(project_id?)`**: The agent pulls only work that is safe to start now.
+3.  **`get_resume_packet(task_id, project_id?)`**: The agent retrieves a focused brief with blockers, memory, and next actions.
+4.  **`create_task(title, description, parent_task_id?, project_id?)`**: Agents can propose sub-tasks inside the correct project scope.
+5.  **`update_task_status(task_id, status, project_id?)`**: The agent moves the task while respecting project boundaries.
+6.  **`add_context(task_id, content, project_id?)`**: The agent records progress notes or structured handoffs without crossing project scope.
 
 ### 4.2 Anatomy of a Structured Handoff:
 When an agent completes a session, it must leave behind a `ResumePacket`:
@@ -73,7 +76,7 @@ When an agent completes a session, it must leave behind a `ResumePacket`:
 
 | Layer | Technology | Rationale |
 | :--- | :--- | :--- |
-| **Frontend UI** | React 18 / Tailwind CSS v4 | Maximum flexibility for custom graph components. |
+| **Frontend UI** | React 19 / Tailwind CSS v4 | Maximum flexibility for custom graph components. |
 | **State Management** | Custom Workspace Controller | Manages the sync between React Flow and REST API. |
 | **Visualization** | React Flow (SvelteFlow port) | Industry standard for node-based graph interfaces. |
 | **API Framework** | FastAPI (Python 3.11+) | Async performance and automatic OpenAPI documentation. |
@@ -85,7 +88,9 @@ When an agent completes a session, it must leave behind a `ResumePacket`:
     ```bash
     cd backend
     python -m venv venv
-    source venv/bin/activate
+    # Windows PowerShell: .\venv\Scripts\activate
+    # macOS/Linux: source venv/bin/activate
+    cp .env.example .env
     pip install -r requirements.txt
     uvicorn main:app --reload --port 8000
     ```
@@ -95,6 +100,68 @@ When an agent completes a session, it must leave behind a `ResumePacket`:
     npm install
     npm run dev -- --port 5173
     ```
+
+### Local Validation Workflow
+
+- Frontend lint: `cd nexus-context && npm run lint`
+- Frontend production build: `cd nexus-context && npm run build`
+- Frontend combined check: `cd nexus-context && npm run check`
+- Backend tests: `cd backend && .\venv\Scripts\python.exe -m unittest tests.test_phase1`
+- Backend migrations: `cd backend && .\venv\Scripts\alembic.exe upgrade head`
+- Backend combined check: `cd backend && .\venv\Scripts\python.exe run_checks.py`
+
+For existing local SQLite databases created before Alembic was introduced, the first `upgrade head` may only stamp the migration state after detecting pre-existing tables. Fresh databases still receive the full initial schema from the migration.
+
+### Runtime Configuration
+
+The backend now reads its local runtime settings from environment variables:
+
+- `NEXUS_ENV`
+- `NEXUS_DATABASE_URL`
+- `NEXUS_CORS_ORIGINS`
+- `NEXUS_PUBLIC_API_BASE_URL`
+- `NEXUS_PUBLIC_MCP_BASE_URL`
+- `NEXUS_REQUEST_LOGGING_ENABLED`
+- `NEXUS_REQUEST_LOGGING_INCLUDE_QUERY_STRING`
+- `NEXUS_REQUEST_LOG_LEVEL`
+- `NEXUS_REQUEST_ID_HEADER_NAME`
+
+These values control database bootstrapping, CORS policy, and the MCP URLs shown in the web app.
+
+### Operator Endpoints
+
+- `GET /health`: lightweight process health and environment metadata.
+- `GET /ready`: readiness probe that confirms the API can execute a database round-trip.
+- `GET /metrics`: compact operator summary for task, dependency, context, and flow-state counts.
+
+### Observability
+
+- The API now applies structured request logging middleware for all HTTP routes.
+- Each request log records `request_id`, `method`, `path`, `status_code`, `client`, and `duration_ms`.
+- The API echoes the correlation ID in every HTTP response header, using `X-Request-ID` by default.
+- Query-string logging stays off by default to keep operator logs quieter and safer.
+- In-process telemetry now tracks recent request history along with average and max request latency.
+- The metrics payload now includes per-path aggregates for volume, failures, and latency hot spots.
+
+### Control Center Metrics Surface
+
+- The frontend Control Center now consumes `GET /metrics` through React Query.
+- Operators can inspect flow totals, backend environment, latency summaries, and recent traced requests directly in the dashboard.
+- Recent request history supports quick text search and `All` / `OK` / `Failed` filtering for triage.
+- The ops panel also highlights top routes and supports incremental expansion of request history with `Show more`.
+
+### Frontend Delivery Optimization
+
+- Major routes now load lazily so the first screen no longer pulls every page eagerly.
+- Workspace easy/advanced views are split into separate async chunks, reducing initial graph-related download cost.
+- Vite manual chunking now separates heavy libraries such as React Flow, Recharts, Markdown rendering, React Query, and command-palette dependencies.
+
+### Current Route Structure
+
+- `http://localhost:5173/projects`
+- `http://localhost:5173/projects/:projectId/control-center`
+- `http://localhost:5173/projects/:projectId/workspace`
+- `http://localhost:5173/projects/:projectId/memory`
 
 ---
 

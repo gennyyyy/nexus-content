@@ -6,13 +6,90 @@ from ..domain.models import (
     Task,
     TaskDependency,
     TaskMemorySummary,
+    UserContext,
 )
+from .authz import ensure_project_access
 from .activity import record_activity, truncate
-from .errors import NotFoundError
+from .errors import ForbiddenError, NotFoundError
 from .workspace import build_memory_summary, build_resume_packet
 
 
-def list_task_context(session: Session, task_id: int) -> list[ContextEntry]:
+def _get_task_or_raise(
+    session: Session,
+    task_id: int,
+    project_id: str | None = None,
+    user: UserContext | None = None,
+) -> Task:
+    task = session.get(Task, task_id)
+    if not task or (project_id is not None and task.project_id != project_id):
+        raise NotFoundError("Task not found")
+    if user is not None:
+        ensure_project_access(session, task.project_id, user, allow_archived=True)
+    return task
+
+
+def _task_is_visible(
+    session: Session, task: Task, user: UserContext | None = None
+) -> bool:
+    if task.archived:
+        return False
+    if user is None:
+        return True
+    try:
+        ensure_project_access(session, task.project_id, user)
+    except (ForbiddenError, NotFoundError):
+        return False
+    return True
+
+
+def _matches_memory_search(summary: TaskMemorySummary, search: str | None) -> bool:
+    if not search:
+        return True
+    needle = search.strip().lower()
+    if not needle:
+        return True
+
+    haystacks = [
+        summary.task_title,
+        summary.latest_summary,
+        summary.latest_next_step,
+        *summary.active_decisions,
+        *summary.open_questions,
+        *summary.recent_files,
+    ]
+    haystacks.extend(entry.content for entry in summary.recent_entries)
+    haystacks.extend(entry.summary for entry in summary.recent_entries)
+    return any(value and needle in value.lower() for value in haystacks)
+
+
+def _load_project_dependencies(
+    session: Session, project_id: str | None
+) -> list[TaskDependency]:
+    dependency_rows = session.exec(select(TaskDependency)).all()
+    dependencies = [dependency for dependency in dependency_rows]
+    if not project_id:
+        return dependencies
+
+    task_rows = session.exec(select(Task).where(Task.project_id == project_id)).all()
+    task_ids = {task.id for task in task_rows if task.id is not None}
+    if not task_ids:
+        return []
+
+    return [
+        dependency
+        for dependency in dependencies
+        if dependency.source_task_id in task_ids
+        and dependency.target_task_id in task_ids
+    ]
+
+
+def list_task_context(
+    session: Session,
+    task_id: int,
+    project_id: str | None = None,
+    user: UserContext | None = None,
+) -> list[ContextEntry]:
+    _get_task_or_raise(session, task_id, project_id, user)
     rows = session.exec(
         select(ContextEntry).where(ContextEntry.task_id == task_id)
     ).all()
@@ -24,12 +101,12 @@ def create_task_context(
     task_id: int,
     entry: ContextEntryCreate,
     *,
+    project_id: str | None = None,
+    user: UserContext | None = None,
     actor: str = "Web operator",
     source: str = "web",
 ) -> ContextEntry:
-    task = session.get(Task, task_id)
-    if not task:
-        raise NotFoundError("Task not found")
+    task = _get_task_or_raise(session, task_id, project_id, user)
 
     normalized_summary = entry.summary or entry.content or "Working update"
     normalized_content = entry.content.strip() or "\n\n".join(
@@ -89,6 +166,7 @@ def create_memory_handoff(
     decisions: str = "",
     open_questions: str = "",
     next_step: str = "",
+    project_id: str | None = None,
     actor: str = "MCP agent",
     source: str = "mcp",
 ) -> ContextEntry:
@@ -104,15 +182,19 @@ def create_memory_handoff(
             open_questions=open_questions or None,
             next_step=next_step or None,
         ),
+        project_id=project_id,
         actor=actor,
         source=source,
     )
 
 
-def get_task_memory_summary(session: Session, task_id: int) -> TaskMemorySummary:
-    task = session.get(Task, task_id)
-    if not task:
-        raise NotFoundError("Task not found")
+def get_task_memory_summary(
+    session: Session,
+    task_id: int,
+    project_id: str | None = None,
+    user: UserContext | None = None,
+) -> TaskMemorySummary:
+    task = _get_task_or_raise(session, task_id, project_id, user)
 
     entry_rows = session.exec(
         select(ContextEntry).where(ContextEntry.task_id == task_id)
@@ -121,16 +203,28 @@ def get_task_memory_summary(session: Session, task_id: int) -> TaskMemorySummary
     return build_memory_summary(task, entries)
 
 
-def get_task_resume_packet(session: Session, task_id: int):
-    task = session.get(Task, task_id)
-    if not task:
-        raise NotFoundError("Task not found")
+def get_task_resume_packet(
+    session: Session,
+    task_id: int,
+    project_id: str | None = None,
+    user: UserContext | None = None,
+):
+    task = _get_task_or_raise(session, task_id, project_id, user)
+    scoped_project_id = project_id or task.project_id
 
     entry_rows = session.exec(
         select(ContextEntry).where(ContextEntry.task_id == task_id)
     ).all()
-    dependency_rows = session.exec(select(TaskDependency)).all()
-    task_rows = session.exec(select(Task)).all()
+    if scoped_project_id:
+        task_rows = session.exec(
+            select(Task).where(
+                Task.project_id == scoped_project_id,
+                Task.archived == False,
+            )
+        ).all()
+    else:
+        task_rows = session.exec(select(Task).where(Task.archived == False)).all()
+    dependency_rows = _load_project_dependencies(session, scoped_project_id)
     entries = [entry for entry in entry_rows]
     dependencies = [dependency for dependency in dependency_rows]
     tasks = [item for item in task_rows]
@@ -138,16 +232,23 @@ def get_task_resume_packet(session: Session, task_id: int):
 
 
 def list_memory_overview(
-    session: Session, project_id: str | None = None
+    session: Session,
+    project_id: str | None = None,
+    user: UserContext | None = None,
+    search: str | None = None,
 ) -> list[TaskMemorySummary]:
+    if user is not None and project_id:
+        ensure_project_access(session, project_id, user)
+
     query = select(Task)
     if project_id:
         query = query.where(Task.project_id == project_id)
+    query = query.where(Task.archived == False)
     task_rows = session.exec(query).all()
-    tasks = [task for task in task_rows]
+    tasks = [task for task in task_rows if _task_is_visible(session, task, user)]
     task_ids = [task.id for task in tasks if task.id is not None]
     entry_rows = session.exec(select(ContextEntry)).all()
-    entries = [entry for entry in entry_rows]
+    entries = [entry for entry in entry_rows if entry.task_id in task_ids]
 
     entries_by_task: dict[int, list[ContextEntry]] = {}
     for entry in entries:
@@ -157,6 +258,9 @@ def list_memory_overview(
         build_memory_summary(task, entries_by_task.get(task.id or -1, []))
         for task in tasks
         if task.id in task_ids
+    ]
+    summaries = [
+        summary for summary in summaries if _matches_memory_search(summary, search)
     ]
     summaries.sort(key=lambda summary: len(summary.recent_entries), reverse=True)
     return summaries

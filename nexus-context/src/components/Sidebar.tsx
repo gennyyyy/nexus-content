@@ -3,6 +3,7 @@ import { NavLink, useParams } from "react-router-dom";
 import { Brain, Settings, Workflow, FolderGit2, Activity } from "lucide-react";
 import { API_BASE, fetchProjects, type Project } from "../lib/api";
 import { SettingsModal } from "./SettingsModal";
+import { useUserSession } from "./user-session-context";
 
 type McpStatus = "online" | "offline" | "checking";
 
@@ -59,10 +60,11 @@ export function Sidebar() {
     const { projectId } = useParams();
     const [projects, setProjects] = useState<Project[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const { session } = useUserSession();
 
     useEffect(() => {
         void fetchProjects().then(setProjects).catch(console.error);
-    }, []);
+    }, [session]);
 
     const currentProject = projects.find(p => p.id === projectId);
 
@@ -91,6 +93,12 @@ export function Sidebar() {
                         <Settings size={10} />
                         Settings
                     </button>
+                </div>
+                <div className="mb-2 flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-[10px] uppercase tracking-wider text-zinc-400">
+                    <span className="truncate font-semibold text-zinc-300">{session.userId}</span>
+                    <span className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 font-bold text-sky-300">
+                        {session.role}
+                    </span>
                 </div>
                 <div 
                     onClick={() => setIsSettingsOpen(true)}

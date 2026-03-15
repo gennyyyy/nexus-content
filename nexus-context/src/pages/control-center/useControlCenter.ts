@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
     fetchActivityFeed,
     fetchControlCenterSnapshot,
@@ -11,8 +12,24 @@ import {
     type ResumePacket,
     type Task,
 } from "../../lib/api";
+import { appQueryKeys } from "../../lib/queryKeys";
+import { useControlCenterMetrics } from "./useControlCenterMetrics";
 
 type TaskPreviewSource = ReadyQueueItem | AttentionTaskItem | HandoffPulseItem;
+
+function buildActivityTaskPreview(event: ActivityEvent): Task | null {
+    if (!event.task_id) {
+        return null;
+    }
+
+    return {
+        id: event.task_id,
+        title: event.task_title || event.title,
+        status: "todo",
+        description: event.summary,
+        priority: "medium",
+    };
+}
 
 function toTaskPriority(value: string | undefined): Task["priority"] {
     if (value === "low" || value === "medium" || value === "high" || value === "critical") {
@@ -33,99 +50,63 @@ function buildTaskPreview(source: TaskPreviewSource): Task {
 }
 
 export function useControlCenter(projectId?: string) {
-    const [snapshot, setSnapshot] = useState<ControlCenterSnapshot | null>(null);
-    const [activity, setActivity] = useState<ActivityEvent[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [selectedReadyTaskId, setSelectedReadyTaskId] = useState<number | null>(null);
-    const [resumePacket, setResumePacket] = useState<ResumePacket | null>(null);
-    const [resumeLoading, setResumeLoading] = useState(false);
-    const [resumeError, setResumeError] = useState<string | null>(null);
     const [contextTask, setContextTask] = useState<Task | null>(null);
+    const [activitySearch, setActivitySearch] = useState("");
+    const deferredActivitySearch = useDeferredValue(activitySearch);
 
-    const loadData = useCallback(async (mode: "initial" | "refresh" = "initial") => {
-        if (mode === "refresh") {
-            setRefreshing(true);
-        } else {
-            setLoading(true);
-        }
+    const snapshotQuery = useQuery<ControlCenterSnapshot>({
+        queryKey: appQueryKeys.controlCenter.snapshot(projectId),
+        queryFn: () => fetchControlCenterSnapshot(projectId),
+        refetchInterval: 30000,
+    });
 
-        try {
-            const [nextSnapshot, nextActivity] = await Promise.all([
-                fetchControlCenterSnapshot(projectId),
-                fetchActivityFeed(60, projectId),
-            ]);
+    const activityQuery = useQuery<ActivityEvent[]>({
+        queryKey: appQueryKeys.controlCenter.activity(projectId, 60, deferredActivitySearch),
+        queryFn: () => fetchActivityFeed(60, projectId, deferredActivitySearch),
+        refetchInterval: 30000,
+    });
 
-            setSnapshot(nextSnapshot);
-            setActivity(nextActivity);
-            setError(null);
-            setSelectedReadyTaskId((current) => {
-                if (current && nextSnapshot.ready_queue.some((item) => item.task_id === current)) {
-                    return current;
-                }
-                return nextSnapshot.ready_queue[0]?.task_id ?? null;
-            });
-        } catch (loadError) {
-            console.error(loadError);
-            setError("Could not load the control center.");
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [projectId]);
+    const snapshot = snapshotQuery.data ?? null;
+    const activity = activityQuery.data ?? [];
+    const loading = snapshotQuery.isLoading || activityQuery.isLoading;
+    const refreshing = snapshotQuery.isFetching || activityQuery.isFetching;
+    const error = snapshotQuery.error || activityQuery.error;
 
-    useEffect(() => {
-        void loadData();
-    }, [loadData]);
-
-    useEffect(() => {
-        const intervalId = window.setInterval(() => {
-            void loadData("refresh");
-        }, 30000);
-
-        return () => window.clearInterval(intervalId);
-    }, [loadData]);
-
-    useEffect(() => {
-        if (!selectedReadyTaskId) {
-            setResumePacket(null);
-            setResumeError(null);
-            return;
-        }
-
-        let cancelled = false;
-        setResumeLoading(true);
-        setResumeError(null);
-
-        fetchTaskResumePacket(selectedReadyTaskId)
-            .then((packet) => {
-                if (!cancelled) {
-                    setResumePacket(packet);
-                }
-            })
-            .catch((resumeLoadError) => {
-                console.error(resumeLoadError);
-                if (!cancelled) {
-                    setResumePacket(null);
-                    setResumeError("Could not load the resume packet for this task.");
-                }
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setResumeLoading(false);
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedReadyTaskId]);
+    const refresh = useCallback(() => {
+        void Promise.all([snapshotQuery.refetch(), activityQuery.refetch()]);
+    }, [activityQuery, snapshotQuery]);
 
     const selectedReadyTask = useMemo(
-        () => snapshot?.ready_queue.find((item) => item.task_id === selectedReadyTaskId) ?? null,
+        () => {
+            if (!snapshot) {
+                return null;
+            }
+            if (
+                selectedReadyTaskId &&
+                snapshot.ready_queue.some((item) => item.task_id === selectedReadyTaskId)
+            ) {
+                return (
+                    snapshot.ready_queue.find((item) => item.task_id === selectedReadyTaskId) ?? null
+                );
+            }
+            return snapshot.ready_queue[0] ?? null;
+        },
         [selectedReadyTaskId, snapshot],
     );
+
+    const effectiveSelectedReadyTaskId = selectedReadyTask?.task_id ?? null;
+
+    const resumePacketQuery = useQuery<ResumePacket>({
+        queryKey: appQueryKeys.controlCenter.resumePacket(effectiveSelectedReadyTaskId, projectId),
+        queryFn: () => fetchTaskResumePacket(effectiveSelectedReadyTaskId!, projectId),
+        enabled: effectiveSelectedReadyTaskId != null,
+    });
+
+    const resumePacket = resumePacketQuery.data ?? null;
+    const resumeLoading = resumePacketQuery.isLoading || resumePacketQuery.isFetching;
+    const resumeError = resumePacketQuery.error;
+    const metricsQuery = useControlCenterMetrics(projectId);
 
     const lastUpdated = snapshot?.generated_at ? new Date(snapshot.generated_at) : null;
 
@@ -137,21 +118,35 @@ export function useControlCenter(projectId?: string) {
         setContextTask(null);
     }, []);
 
+    const openActivityContextTask = useCallback((event: ActivityEvent) => {
+        const task = buildActivityTaskPreview(event);
+        if (task) {
+            setContextTask(task);
+        }
+    }, []);
+
     return {
         snapshot,
         activity,
         loading,
         refreshing,
-        error,
+        error: error instanceof Error ? error.message : error ? "Could not load the control center." : null,
         lastUpdated,
-        refresh: () => loadData("refresh"),
+        refresh,
         selectedReadyTask,
         selectReadyTask: setSelectedReadyTaskId,
         resumePacket,
         resumeLoading,
-        resumeError,
+        resumeError: resumeError instanceof Error ? resumeError.message : resumeError ? "Could not load the resume packet for this task." : null,
+        metrics: metricsQuery.data ?? null,
+        metricsLoading: metricsQuery.isLoading || metricsQuery.isFetching,
+        metricsError: metricsQuery.error instanceof Error ? metricsQuery.error.message : metricsQuery.error ? "Could not load operator metrics." : null,
         contextTask,
         openContextTask,
+        openActivityContextTask,
         closeContextTask,
+        selectedReadyTaskId: effectiveSelectedReadyTaskId,
+        activitySearch,
+        setActivitySearch,
     };
 }

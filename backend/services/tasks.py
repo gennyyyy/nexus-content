@@ -2,17 +2,58 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from ..domain.models import ContextEntry, Task, TaskDependency, TaskStatus, TaskUpdate
+from ..domain.models import (
+    ContextEntry,
+    Task,
+    TaskArchiveUpdate,
+    TaskDependency,
+    TaskStatus,
+    TaskUpdate,
+    UserContext,
+)
+from .authz import ensure_project_access, ensure_project_owner_or_admin
 from .activity import normalize_priority, record_activity, status_label
-from .errors import NotFoundError
+from .errors import ForbiddenError, NotFoundError
 
 
-def list_tasks(session: Session, project_id: str | None = None) -> list[Task]:
+def list_tasks(
+    session: Session,
+    project_id: str | None = None,
+    user: UserContext | None = None,
+    *,
+    include_archived: bool = False,
+) -> list[Task]:
+    if user is not None and project_id:
+        ensure_project_access(
+            session,
+            project_id,
+            user,
+            allow_archived=include_archived,
+        )
     query = select(Task)
     if project_id:
         query = query.where(Task.project_id == project_id)
+    if not include_archived:
+        query = query.where(Task.archived == False)
     rows = session.exec(query).all()
-    return [task for task in rows]
+
+    if user is None:
+        return [task for task in rows]
+
+    tasks: list[Task] = []
+    for task in rows:
+        try:
+            ensure_project_access(
+                session,
+                task.project_id,
+                user,
+                allow_archived=include_archived,
+            )
+        except (ForbiddenError, NotFoundError):
+            continue
+        tasks.append(task)
+
+    return tasks
 
 
 def create_task(
@@ -24,9 +65,12 @@ def create_task(
     priority: str = "medium",
     labels: str | None = None,
     project_id: str | None = None,
+    user: UserContext | None = None,
     actor: str = "Web operator",
     source: str = "web",
 ) -> Task:
+    if user is not None:
+        ensure_project_access(session, project_id, user)
     normalized_status = status if isinstance(status, TaskStatus) else TaskStatus(status)
     db_task = Task(
         title=title,
@@ -60,6 +104,7 @@ def update_task(
     session: Session,
     task_id: int,
     task_update: TaskUpdate | dict[str, Any],
+    user: UserContext | None = None,
     *,
     actor: str = "Web operator",
     source: str = "web",
@@ -67,6 +112,8 @@ def update_task(
     db_task = session.get(Task, task_id)
     if not db_task:
         raise NotFoundError("Task not found")
+    if user is not None:
+        ensure_project_access(session, db_task.project_id, user)
 
     updates = (
         task_update.model_dump(exclude_unset=True)
@@ -134,6 +181,7 @@ def update_task(
 def delete_task(
     session: Session,
     task_id: int,
+    user: UserContext | None = None,
     *,
     actor: str = "Web operator",
     source: str = "web",
@@ -141,6 +189,10 @@ def delete_task(
     task = session.get(Task, task_id)
     if not task:
         raise NotFoundError("Task not found")
+    if user is not None:
+        ensure_project_owner_or_admin(
+            session, task.project_id or "", user, allow_archived=True
+        )
 
     deleted_task_title = task.title
     deleted_task_status = task.status
@@ -177,3 +229,46 @@ def delete_task(
         project_id=task.project_id,
     )
     session.commit()
+
+
+def update_task_archive_state(
+    session: Session,
+    task_id: int,
+    archive_update: TaskArchiveUpdate,
+    user: UserContext,
+    *,
+    actor: str = "Web operator",
+    source: str = "web",
+) -> Task:
+    task = session.get(Task, task_id)
+    if not task:
+        raise NotFoundError("Task not found")
+
+    ensure_project_owner_or_admin(
+        session, task.project_id or "", user, allow_archived=True
+    )
+    if task.archived == archive_update.archived:
+        return task
+
+    task.archived = archive_update.archived
+    session.add(task)
+    record_activity(
+        session,
+        event_type="task.archived" if archive_update.archived else "task.unarchived",
+        entity_type="task",
+        entity_id=task.id,
+        task_id=task.id,
+        task_title=task.title,
+        title=(
+            f'Archived task "{task.title}"'
+            if archive_update.archived
+            else f'Unarchived task "{task.title}"'
+        ),
+        summary=f"Archive state changed for {task.title}.",
+        actor=actor,
+        source=source,
+        project_id=task.project_id,
+    )
+    session.commit()
+    session.refresh(task)
+    return task

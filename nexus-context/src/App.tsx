@@ -1,13 +1,14 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/ToastProvider";
-import { Workspace } from "./pages/Workspace";
-import { MemoryHub } from "./pages/MemoryHub";
-import { ControlCenter } from "./pages/ControlCenter";
-import { ProjectSelector } from "./pages/ProjectSelector";
-import { CommandPalette } from "./components/CommandPalette";
+
+const Workspace = lazy(() => import("./pages/Workspace").then((module) => ({ default: module.Workspace })));
+const MemoryHub = lazy(() => import("./pages/MemoryHub").then((module) => ({ default: module.MemoryHub })));
+const ControlCenter = lazy(() => import("./pages/ControlCenter").then((module) => ({ default: module.ControlCenter })));
+const ProjectSelector = lazy(() => import("./pages/ProjectSelector").then((module) => ({ default: module.ProjectSelector })));
+const CommandPalette = lazy(() => import("./components/CommandPalette").then((module) => ({ default: module.CommandPalette })));
 
 function GlobalShortcuts() {
     useEffect(() => {
@@ -27,23 +28,33 @@ function GlobalShortcuts() {
     return null;
 }
 
+function AppPageSkeleton() {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-zinc-950 text-zinc-400">
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-zinc-800 border-t-sky-400" />
+        </div>
+    );
+}
+
 export default function App() {
     return (
         <ErrorBoundary>
             <ToastProvider>
                 <BrowserRouter>
                     <GlobalShortcuts />
-                    <CommandPalette />
-                    <Routes>
-                        <Route path="/" element={<Navigate to="/projects" replace />} />
-                        <Route path="/projects" element={<ProjectSelector />} />
-                        <Route path="/projects/:projectId" element={<Layout />}>
-                            <Route index element={<Navigate to="control-center" replace />} />
-                            <Route path="control-center" element={<ControlCenter />} />
-                            <Route path="workspace" element={<Workspace />} />
-                            <Route path="memory" element={<MemoryHub />} />
-                        </Route>
-                    </Routes>
+                    <Suspense fallback={<AppPageSkeleton />}>
+                        <CommandPalette />
+                        <Routes>
+                            <Route path="/" element={<Navigate to="/projects" replace />} />
+                            <Route path="/projects" element={<ProjectSelector />} />
+                            <Route path="/projects/:projectId" element={<Layout />}>
+                                <Route index element={<Navigate to="control-center" replace />} />
+                                <Route path="control-center" element={<ControlCenter />} />
+                                <Route path="workspace" element={<Workspace />} />
+                                <Route path="memory" element={<MemoryHub />} />
+                            </Route>
+                        </Routes>
+                    </Suspense>
                 </BrowserRouter>
             </ToastProvider>
         </ErrorBoundary>
